@@ -83,7 +83,9 @@ export default function HomePage() {
 
         <SectionHeader title="📊 Data & Diff" subtitle="Compare files and convert data formats" />
         <div style={gridStyle}>
-          <ToolCard title="CSV Diff" description="Compare two CSV files" href="/tools/csv-diff" icon="⚖️" />
+          {/* ADDED DIFF CHECKER HUB HERE */}
+          <ToolCard title="Diff Checkers" description="Text, CSV, & Excel Diff" href="/tools/diffchecker" icon="🧩" />
+          <ToolCard title="CSV Diff" description="Detailed row comparison" href="/tools/csv-diff" icon="⚖️" />
           <ToolCard title="CSV → JSON" description="Structured JSON output" href="/tools/csv-to-json" icon="🔁" />
           <ToolCard title="JSON → CSV" description="Flat CSV export" href="/tools/json-to-csv" icon="📄" />
           <ToolCard title="CSV → Excel" description="Spreadsheet ready" href="/tools/csv-to-excel" icon="📊" />
