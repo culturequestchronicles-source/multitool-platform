@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import mammoth from "mammoth";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import mammoth from "mammoth";
+import { noStoreHeaders } from "../../../../lib/http";
+
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
@@ -8,109 +11,97 @@ export async function POST(req: Request) {
     const file = form.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      return NextResponse.json({ error: "No DOCX uploaded" }, { status: 400 });
     }
 
-    const nameOk =
-      file.name.toLowerCase().endsWith(".docx") || file.type.includes("wordprocessingml");
-    if (!nameOk) {
-      return NextResponse.json({ error: "Please upload a DOCX file" }, { status: 400 });
+    const okTypes = [
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/octet-stream",
+    ];
+    const nameOk = (file.name || "").toLowerCase().endsWith(".docx");
+    
+    if (!okTypes.includes(file.type) && !nameOk) {
+      return NextResponse.json({ error: "Only .docx files are allowed" }, { status: 400 });
     }
-    if (file.size > 20_000_000) {
-      return NextResponse.json({ error: "Max file size is 20MB" }, { status: 400 });
-    }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    // 1. Extract text from DOCX using Mammoth
+    const docxBuffer = Buffer.from(await file.arrayBuffer());
+    const extracted = await mammoth.extractRawText({ buffer: docxBuffer });
+    const text = (extracted.value || "").trim() || "No text extracted.";
 
-    // Extract raw text from docx
-    const { value } = await mammoth.extractRawText({ buffer });
-    const text = (value || "").trim();
-
-    // Create a PDF with text (simple, reliable)
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-    const page = pdfDoc.addPage();
-    const { width, height } = page.getSize();
+    // 2. Create PDF Document
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
 
     const fontSize = 12;
-    const lineHeight = 16;
     const margin = 50;
-    const maxWidth = width - margin * 2;
+    const pageSize: [number, number] = [595.28, 841.89]; // A4 Size
+    const maxWidth = pageSize[0] - margin * 2;
+    const lineHeight = fontSize + 4;
 
-    const words = (text || "No text found in DOCX.").split(/\s+/);
-    let line = "";
-    let y = height - margin;
+    let page = pdf.addPage(pageSize);
+    const lines = wrapText(text, font, fontSize, maxWidth);
 
-    function drawLine(s: string) {
-      page.drawText(s, {
+    let y = pageSize[1] - margin;
+
+    // 3. Draw text and handle page breaks
+    for (const line of lines) {
+      // Check if we need a new page
+      if (y < margin + lineHeight) {
+        page = pdf.addPage(pageSize);
+        y = pageSize[1] - margin;
+      }
+      
+      page.drawText(line, {
         x: margin,
         y,
         size: fontSize,
         font,
         color: rgb(0, 0, 0),
       });
+      
       y -= lineHeight;
-      if (y < margin) {
-        // new page
-        const newPage = pdfDoc.addPage();
-        y = newPage.getSize().height - margin;
-        // swap current page reference (simple approach)
-        // NOTE: for simplicity, we keep drawing on new page by reassigning
-        // but pdf-lib page is immutable reference, so we need a variable:
-        (currentPage as any) = newPage;
-      }
     }
 
-    // Use a mutable reference for current page
-    let currentPage: any = page;
+    // 4. Save and return using Build-Safe types
+    const out = await pdf.save();
+    const body = new Uint8Array(out); // Fix: Explicitly wrap for TypeScript/Vercel
 
-    function measureWidth(s: string) {
-      return font.widthOfTextAtSize(s, fontSize);
-    }
-
-    for (const w of words) {
-      const test = line ? `${line} ${w}` : w;
-      if (measureWidth(test) > maxWidth) {
-        currentPage.drawText(line, {
-          x: margin,
-          y,
-          size: fontSize,
-          font,
-          color: rgb(0, 0, 0),
-        });
-        y -= lineHeight;
-        if (y < margin) {
-          currentPage = pdfDoc.addPage();
-          const size = currentPage.getSize();
-          y = size.height - margin;
-        }
-        line = w;
-      } else {
-        line = test;
-      }
-    }
-
-    if (line) {
-      currentPage.drawText(line, {
-        x: margin,
-        y,
-        size: fontSize,
-        font,
-        color: rgb(0, 0, 0),
-      });
-    }
-
-    const pdfBytes = await pdfDoc.save();
-
-    return new NextResponse(pdfBytes, {
-      headers: {
+    return new Response(body, {
+      status: 200,
+      headers: noStoreHeaders({
         "Content-Type": "application/pdf",
         "Content-Disposition": 'attachment; filename="converted.pdf"',
-      },
+      }),
     });
-  } catch (err: any) {
-    console.error("word-to-pdf error:", err);
-    return NextResponse.json({ error: "Conversion failed" }, { status: 500 });
+    
+  } catch (e: any) {
+    console.error("Word-to-PDF error:", e);
+    return NextResponse.json(
+      { error: e?.message || "Word to PDF failed" }, 
+      { status: 500 }
+    );
   }
+}
+
+// Helper function to wrap text within margins
+function wrapText(text: string, font: any, size: number, maxWidth: number) {
+  const words = text.replace(/\r/g, "").split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const w of words) {
+    const testLine = currentLine ? `${currentLine} ${w}` : w;
+    const width = font.widthOfTextAtSize(testLine, size);
+    
+    if (width <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = w;
+    }
+  }
+  
+  if (currentLine) lines.push(currentLine);
+  return lines;
 }

@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
+import * as pdfParse from "pdf-parse";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
-export const runtime = "nodejs"; // ensure Node runtime
+export const runtime = "nodejs";
 
-const MAX_BYTES = 15_000_000; // 15MB
-
-function badRequest(msg: string) {
-  return NextResponse.json({ error: msg }, { status: 400 });
+function noStoreHeaders(extra: Record<string, string>) {
+  return {
+    ...extra,
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+  };
 }
 
 export async function POST(req: Request) {
@@ -14,48 +18,44 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const file = form.get("file") as File | null;
 
-    if (!file) return badRequest("Please upload a PDF file");
-    if (file.type !== "application/pdf") return badRequest("Invalid file type. Please upload a PDF.");
-    if (file.size > MAX_BYTES) return badRequest("File too large. Max 15MB.");
+    if (!file) return NextResponse.json({ error: "No PDF uploaded" }, { status: 400 });
+    if (file.type !== "application/pdf") {
+      return NextResponse.json({ error: "Only PDF files are allowed" }, { status: 400 });
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    // ✅ Robust import for pdf-parse in Next.js (ESM/CJS safe)
-    // This avoids "default is not a function" issues.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pdfParse = require("pdf-parse");
-    const parsed = await pdfParse(buffer);
-
-    const text = (parsed?.text || "").trim();
-    if (!text) return badRequest("No extractable text found in this PDF (may be scanned).");
-
-    // Build DOCX with simple paragraphs
-    const paragraphs = text
-      .split(/\n{2,}/g) // split by blank lines into paragraph blocks
-      .map((block: string) =>
-        new Paragraph({
-          children: [new TextRun(block.replace(/\n/g, " ").trim())],
-        })
-      );
+    const parsed = await (pdfParse as any)(buffer);
+    const text = String(parsed?.text || "").trim();
 
     const doc = new Document({
-      sections: [{ children: paragraphs.length ? paragraphs : [new Paragraph(" ")] }],
+      sections: [
+        {
+          children: [
+            new Paragraph({
+              children: [new TextRun(text || "No extractable text found in PDF.")],
+            }),
+          ],
+        },
+      ],
     });
 
-    const docxBuffer = await Packer.toBuffer(doc);
+    // 1. Generate the docx buffer
+    const out = await Packer.toBuffer(doc);
 
-    return new NextResponse(docxBuffer, {
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    // 2. THE FIX: Convert to Uint8Array directly. 
+    // Using 'as any' here breaks the strict link to SharedArrayBuffer that triggers the build error.
+    const body = new Uint8Array(out as any);
+
+    // 3. Return a standard Response using the bytes directly (skipping Blob)
+    return new Response(body, {
+      status: 200,
+      headers: noStoreHeaders({
+        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": 'attachment; filename="converted.docx"',
-      },
+      }),
     });
-  } catch (err: any) {
-    console.error("pdf-to-word error:", err);
-    return NextResponse.json(
-      { error: "PDF → Word conversion failed" },
-      { status: 500 }
-    );
+  } catch (e: any) {
+    console.error("PDF-to-Word Error:", e);
+    return NextResponse.json({ error: e?.message || "PDF to Word failed" }, { status: 500 });
   }
 }

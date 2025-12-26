@@ -9,21 +9,19 @@ function slugify(input: string, opts: { lowercase: boolean; maxLen: number; sepa
   // 1) Trim
   let s = input.trim();
 
-  // 2) Replace common symbols with words (optional but nice)
+  // 2) Replace common symbols with words
   s = s
     .replace(/&/g, " and ")
     .replace(/@/g, " at ")
     .replace(/%/g, " percent ");
 
-  // 3) Normalize spaces to single spaces
+  // 3) Normalize spaces
   s = s.replace(/\s+/g, " ");
 
-  // 4) Remove non-ASCII characters safely (avoids Unicode property escapes)
-  // Keep letters/numbers/space/hyphen/underscore only
+  // 4) Clean non-ASCII
   s = s.replace(/[^A-Za-z0-9 _-]+/g, "");
 
-  // 5) Convert spaces and underscores/hyphens to chosen separator
-  // First turn underscores/hyphens into spaces, then spaces into separator
+  // 5) Convert separators
   s = s.replace(/[_-]+/g, " ");
   s = s.trim().replace(/\s+/g, sep);
 
@@ -34,14 +32,13 @@ function slugify(input: string, opts: { lowercase: boolean; maxLen: number; sepa
   const multiSep = sep === "-" ? /-+/g : /_+/g;
   s = s.replace(multiSep, sep);
 
-  // 8) Trim separators
+  // 8) Trim separators from ends
   const trimSep = sep === "-" ? /^-+|-+$/g : /^_+|_+$/g;
   s = s.replace(trimSep, "");
 
   // 9) Max length
   if (opts.maxLen > 0 && s.length > opts.maxLen) {
     s = s.slice(0, opts.maxLen);
-    // avoid ending in separator after cut
     s = s.replace(trimSep, "");
   }
 
@@ -62,7 +59,8 @@ export default function SlugGeneratorPage() {
   async function copy() {
     await navigator.clipboard.writeText(slug);
     setStatus("Copied ✅");
-    trackUsage("slug-generator", "copy", { length: slug.length });
+    // FIX: Wrapped arguments into a single object
+    trackUsage({ tool: "slug-generator", action: "copy" });
     setTimeout(() => setStatus(""), 1200);
   }
 
@@ -74,13 +72,15 @@ export default function SlugGeneratorPage() {
     a.download = "slug.txt";
     a.click();
     URL.revokeObjectURL(url);
-    trackUsage("slug-generator", "download", { length: slug.length });
+    // FIX: Wrapped arguments into a single object
+    trackUsage({ tool: "slug-generator", action: "download" });
   }
 
   function clearAll() {
     setText("");
     setStatus("");
-    trackUsage("slug-generator", "clear");
+    // FIX: Wrapped arguments into a single object
+    trackUsage({ tool: "slug-generator", action: "clear" });
   }
 
   return (
@@ -98,14 +98,13 @@ export default function SlugGeneratorPage() {
           alignItems: "start",
         }}
       >
-        {/* Left: Input + Output */}
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: 18 }}>
           <label style={{ fontWeight: 700 }}>Input</label>
           <textarea
             value={text}
             onChange={(e) => {
               setText(e.target.value);
-              trackUsage("slug-generator", "type", { chars: e.target.value.length });
+              // Note: Intentionally not tracking every keystroke to avoid spamming analytics
             }}
             placeholder="Type or paste your title here…"
             rows={7}
@@ -191,7 +190,6 @@ export default function SlugGeneratorPage() {
           </div>
         </div>
 
-        {/* Right: Options */}
         <aside style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: 18 }}>
           <h2 style={{ fontSize: 16, fontWeight: 900, marginBottom: 14 }}>Options</h2>
 

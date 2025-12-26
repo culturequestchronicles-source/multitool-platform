@@ -9,7 +9,8 @@ type OutputType = "array" | "hash" | "minify";
 export default function CsvConverterPage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string>("");
-  const [jsonOutput, setJsonOutput] = useState<any[]>([]);
+  // Fix 1: Changed type to 'any' to allow both Array and String (for minify)
+  const [jsonOutput, setJsonOutput] = useState<any>([]);
   const [separator, setSeparator] = useState<string>("");
   const [parseNumbers, setParseNumbers] = useState(true);
   const [parseJson, setParseJson] = useState(true);
@@ -39,16 +40,17 @@ export default function CsvConverterPage() {
     let data = results.data;
 
     if (transpose) {
+      // Fix 2: Cast row to 'any' so TypeScript allows row[k] access
       const keys = Object.keys(data[0] || {});
       const transposed: any[] = keys.map((k) =>
-        data.map((row) => row[k])
+        data.map((row: any) => row[k])
       );
-      data = transposed as any;
+      data = transposed;
     }
 
     if (outputType === "hash") {
       const hash: Record<string, any> = {};
-      data.forEach((row, i) => {
+      data.forEach((row: any, i) => {
         hash[i] = row;
       });
       setJsonOutput([hash]);
@@ -82,10 +84,8 @@ export default function CsvConverterPage() {
   }
 
   function handleDownload() {
-    const blob = new Blob(
-      [typeof jsonOutput === "string" ? jsonOutput : JSON.stringify(jsonOutput, null, 2)],
-      { type: "application/json" }
-    );
+    const content = typeof jsonOutput === "string" ? jsonOutput : JSON.stringify(jsonOutput, null, 2);
+    const blob = new Blob([content], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -94,6 +94,9 @@ export default function CsvConverterPage() {
     URL.revokeObjectURL(url);
   }
 
+  // Helper to determine if we should show action buttons
+  const hasOutput = Array.isArray(jsonOutput) ? jsonOutput.length > 0 : !!jsonOutput;
+
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <h1 className="text-3xl font-bold flex items-center gap-2 mb-6">
@@ -101,7 +104,6 @@ export default function CsvConverterPage() {
         CSV → JSON / AI Converter
       </h1>
 
-      {/* File Upload */}
       <div className="flex flex-col md:flex-row gap-4 mb-4">
         <div className="flex-1">
           <label className="block font-semibold mb-1">Upload a CSV file</label>
@@ -117,17 +119,16 @@ export default function CsvConverterPage() {
           <label className="block font-semibold mb-1">Or paste your CSV here</label>
           <textarea
             rows={10}
-            className="border rounded p-2 w-full"
+            className="border rounded p-2 w-full text-sm font-mono"
             value={csvText}
             onChange={(e) => setCsvText(e.target.value)}
           ></textarea>
         </div>
       </div>
 
-      {/* Options */}
-      <div className="flex flex-wrap gap-4 items-center mb-4">
+      <div className="flex flex-wrap gap-4 items-center mb-4 bg-white p-4 rounded-lg border">
         <div>
-          <label>Separator</label>
+          <label className="text-sm font-medium">Separator</label>
           <select
             value={separator}
             onChange={(e) => setSeparator(e.target.value)}
@@ -140,97 +141,75 @@ export default function CsvConverterPage() {
           </select>
         </div>
 
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
           <input type="checkbox" checked={parseNumbers} onChange={() => setParseNumbers(!parseNumbers)} />
           Parse numbers
         </label>
 
-        <label className="flex items-center gap-1">
-          <input type="checkbox" checked={parseJson} onChange={() => setParseJson(!parseJson)} />
-          Parse JSON
-        </label>
-
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
           <input type="checkbox" checked={transpose} onChange={() => setTranspose(!transpose)} />
           Transpose
         </label>
 
         <div>
-          <label>Output:</label>
+          <label className="text-sm font-medium">Output format:</label>
           <select
             value={outputType}
             onChange={(e) => setOutputType(e.target.value as OutputType)}
             className="border p-1 rounded ml-2"
           >
-            <option value="array">Array</option>
-            <option value="hash">Hash</option>
-            <option value="minify">Minify</option>
+            <option value="array">JSON Array</option>
+            <option value="hash">JSON Hash</option>
+            <option value="minify">Minified String</option>
           </select>
         </div>
       </div>
 
-      {/* Buttons */}
       <div className="flex gap-2 mb-4">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          onClick={handleConvert}
-        >
+        <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition" onClick={handleConvert}>
           Convert
         </button>
-        <button
-          className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-          onClick={handleClear}
-        >
+        <button className="bg-gray-200 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition" onClick={handleClear}>
           Clear
         </button>
-        {jsonOutput.length > 0 && (
+        {hasOutput && (
           <>
-            <button
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              onClick={handleDownload}
-            >
+            <button className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition" onClick={handleDownload}>
               Download
             </button>
-            <button
-              className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-              onClick={() =>
-                navigator.clipboard.writeText(
-                  typeof jsonOutput === "string" ? jsonOutput : JSON.stringify(jsonOutput, null, 2)
-                )
-              }
+            <button 
+              className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition"
+              onClick={() => navigator.clipboard.writeText(typeof jsonOutput === "string" ? jsonOutput : JSON.stringify(jsonOutput, null, 2))}
             >
-              Copy to clipboard
+              Copy
             </button>
           </>
         )}
       </div>
 
-      {/* JSON Output */}
-      {jsonOutput.length > 0 && (
-        <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 mb-4">
+      {hasOutput && (
+        <pre className="bg-gray-900 text-blue-400 p-4 rounded-lg overflow-auto max-h-96 mb-4 text-xs">
           {typeof jsonOutput === "string" ? jsonOutput : JSON.stringify(jsonOutput, null, 2)}
         </pre>
       )}
 
-      {/* AI Agent */}
-      <div className="border-t pt-4">
-        <h2 className="text-xl font-semibold mb-2">AI Agent: Convert / Analyze Data</h2>
+      <div className="border-t pt-6 mt-8">
+        <h2 className="text-xl font-bold mb-2">AI Agent: Analyze CSV</h2>
         <textarea
           rows={3}
-          className="border p-2 rounded w-full mb-2"
-          placeholder="Ask AI to convert or analyze your CSV/JSON/Excel data"
+          className="border p-3 rounded-lg w-full mb-3"
+          placeholder="e.g., 'Summarize the total sales by region' or 'Find the highest value in column B'"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
         />
-        <button
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-          onClick={handleAiConversion}
-        >
+        <button className="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-700 transition" onClick={handleAiConversion}>
           Run AI Agent
         </button>
 
         {aiResponse && (
-          <pre className="bg-gray-200 p-4 rounded mt-4 whitespace-pre-wrap">{aiResponse}</pre>
+          <div className="bg-purple-50 border border-purple-100 p-4 rounded-lg mt-4 text-purple-900 whitespace-pre-wrap">
+            {aiResponse}
+          </div>
         )}
       </div>
     </div>

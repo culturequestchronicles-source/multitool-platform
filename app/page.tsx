@@ -5,37 +5,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://jhatpat.com"),
   title: "Jhatpat — Free Online File Converters, PDF Tools, Diff Checkers & Generators",
   description:
-    "Jhatpat is a fast, secure web utility platform for PDF tools (merge, split, compress, convert), data converters (CSV/JSON/Excel), diff checkers, and generators like passwords, GUIDs, slugs, dummy data and TinyURL.",
-  keywords: [
-    "PDF merge",
-    "PDF split",
-    "PDF compress",
-    "image to PDF",
-    "word to PDF",
-    "PDF to word",
-    "PDF to image",
-    "CSV to JSON",
-    "JSON to CSV",
-    "CSV to Excel",
-    "JSON to Excel",
-    "CSV diff",
-    "text diff checker",
-    "file converter",
-    "web utilities",
-    "password generator",
-    "GUID generator",
-    "slug generator",
-    "dummy data generator",
-    "tinyurl generator",
-    "URL shortener",
-    "secure link shortener",
-    "online tools",
-    "free online tools"
-  ],
+    "Jhatpat is a fast, secure web utility platform for PDF tools (merge, split, compress, convert), data converters (CSV/JSON/Excel), diff checkers, and generators.",
+  keywords: ["PDF merge", "PDF compress", "CSV to JSON", "Password generator", "URL shortener", "Dummy Data Generator", "CSV Diff", "Slug Generator"],
   openGraph: {
     title: "Jhatpat — Web Utilities (PDF, Converters, Diff, Generators)",
-    description:
-      "Free and secure web utilities for PDFs, data conversions, diff checking, and generators (passwords, GUIDs, slugs, dummy data, TinyURL).",
+    description: "Free and secure web utilities for PDFs, data conversions, and more.",
     url: "https://jhatpat.com",
     siteName: "Jhatpat",
     type: "website"
@@ -44,58 +18,27 @@ export const metadata: Metadata = {
 };
 
 const TAGS = [
-  "#PDFMerge",
-  "#PDFSplit",
-  "#PDFCompress",
-  "#ImageToPDF",
-  "#WordToPDF",
-  "#PDFToWord",
-  "#PDFToImage",
-  "#CSVToJSON",
-  "#JSONToCSV",
-  "#CSVToExcel",
-  "#JSONToExcel",
-  "#TextDiff",
-  "#CSVDiff",
-  "#Generators",
-  "#PasswordGenerator",
-  "#GUIDGenerator",
-  "#SlugGenerator",
-  "#DummyData",
-  "#TinyURL",
-  "#URLShortener",
-  "#FreeOnlineTools",
-  "#WebUtilities"
+  "#PDFMerge", "#PDFSplit", "#PDFCompress", "#ImageToPDF", "#WordToPDF", 
+  "#PDFToWord", "#PDFToImage", "#CSVToJSON", "#JSONToCSV", "#CSVToExcel", 
+  "#JSONToExcel", "#TextDiff", "#CSVDiff", "#Generators", "#PasswordGenerator", 
+  "#GUIDGenerator", "#SlugGenerator", "#DummyData", "#TinyURL", "#URLShortener", 
+  "#BoxShadow", "#FreeOnlineTools", "#WebUtilities"
 ];
 
 export default function HomePage() {
   return (
-    <main style={{ background: "#f7fafc" }}>
-      {/* HERO */}
+    <main style={{ background: "#f7fafc", minHeight: "100vh" }}>
+      {/* HERO SECTION */}
       <section
         style={{
           padding: "90px 24px",
-          background:
-            "radial-gradient(1200px circle at 20% 10%, #1d4ed8 0%, rgba(29,78,216,0.15) 35%, rgba(2,6,23,1) 100%)",
+          background: "radial-gradient(1200px circle at 20% 10%, #1d4ed8 0%, rgba(29,78,216,0.15) 35%, rgba(2,6,23,1) 100%)",
           color: "white",
           textAlign: "center",
         }}
       >
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              gap: 10,
-              alignItems: "center",
-              padding: "10px 14px",
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: 0.2,
-            }}
-          >
+          <div style={pillBadge}>
             <span style={{ opacity: 0.95 }}>jhatpat.com</span>
             <span style={{ opacity: 0.65 }}>•</span>
             <span style={{ opacity: 0.9 }}>Fast • Secure • Free Utilities</span>
@@ -106,150 +49,67 @@ export default function HomePage() {
           </h1>
           <p style={{ marginTop: 14, fontSize: 18, opacity: 0.92, lineHeight: 1.6 }}>
             Convert and manage files instantly — PDF tools, data converters, diff checkers, and generators.
-            Built for speed, privacy and productivity.
           </p>
 
           <div style={{ marginTop: 28, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a
-              href="#tools"
-              style={{
-                background: "#2563eb",
-                padding: "14px 22px",
-                borderRadius: 14,
-                color: "white",
-                fontWeight: 800,
-                textDecoration: "none",
-              }}
-            >
-              Explore Tools
-            </a>
-            <a
-              href="#tags"
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                padding: "14px 22px",
-                borderRadius: 14,
-                color: "white",
-                fontWeight: 800,
-                textDecoration: "none",
-                border: "1px solid rgba(255,255,255,0.16)",
-              }}
-            >
-              Browse Capabilities
-            </a>
+            <a href="#tools" style={primaryBtn}>Explore Tools</a>
+            <a href="#tags" style={secondaryBtn}>Browse Capabilities</a>
           </div>
         </div>
       </section>
 
       {/* TRUST STRIP */}
       <section style={{ padding: "26px 24px", background: "white", borderBottom: "1px solid #e5e7eb" }}>
-        <div
-          style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 14,
-          }}
-        >
-          <TrustPill title="No signup required" desc="Start converting immediately" icon="⚡" />
-          <TrustPill title="Privacy-first" desc="Process files without storing" icon="🔒" />
-          <TrustPill title="Fast results" desc="Optimized for quick workflows" icon="🚀" />
-          <TrustPill title="Works everywhere" desc="Windows • Mac • Mobile" icon="🌍" />
+        <div style={trustGrid}>
+          <TrustPill title="No signup required" desc="Start immediately" icon="⚡" />
+          <TrustPill title="Privacy-first" desc="Secure processing" icon="🔒" />
+          <TrustPill title="Fast results" desc="Quick workflows" icon="🚀" />
+          <TrustPill title="Works everywhere" desc="Desktop & Mobile" icon="🌍" />
         </div>
       </section>
 
-      {/* TOOLS */}
-      <section id="tools" style={{ padding: 50, maxWidth: 1160, margin: "0 auto" }}>
-        <SectionHeader title="📄 PDF Utilities" subtitle="Merge, split, compress and convert PDFs in seconds" />
-        <div style={grid}>
+      {/* TOOLS SECTION */}
+      <section id="tools" style={{ padding: "50px 24px", maxWidth: 1160, margin: "0 auto" }}>
+        
+        <SectionHeader title="📄 PDF Utilities" subtitle="Professional PDF manipulation tools" />
+        <div style={gridStyle}>
           <ToolCard title="Merge PDF" description="Combine multiple PDFs" href="/tools/pdf/merge" icon="🧩" />
           <ToolCard title="Split PDF" description="Split pages easily" href="/tools/pdf/split" icon="✂️" />
           <ToolCard title="Compress PDF" description="Reduce file size" href="/tools/pdf/compress" icon="🗜️" />
+          <ToolCard title="PDF → Word" description="Editable DOCX" href="/tools/pdf/pdf-to-word" icon="📝" />
           <ToolCard title="Image → PDF" description="Images to PDF" href="/tools/pdf/image-to-pdf" icon="🖼️" />
           <ToolCard title="Word → PDF" description="DOCX to PDF" href="/tools/pdf/word-to-pdf" icon="📄" />
-          <ToolCard title="PDF → Word" description="Editable Word file" href="/tools/pdf/pdf-to-word" icon="📝" />
-          <ToolCard title="PDF → Image" description="Export images" href="/tools/pdf/pdf-to-image" icon="📷" />
         </div>
 
-        <SectionHeader title="📊 Data Converters" subtitle="Convert CSV/JSON/Excel reliably — perfect for engineers & analysts" />
-        <div style={grid}>
+        <SectionHeader title="📊 Data & Diff" subtitle="Compare files and convert data formats" />
+        <div style={gridStyle}>
+          <ToolCard title="CSV Diff" description="Compare two CSV files" href="/tools/csv-diff" icon="⚖️" />
           <ToolCard title="CSV → JSON" description="Structured JSON output" href="/tools/csv-to-json" icon="🔁" />
           <ToolCard title="JSON → CSV" description="Flat CSV export" href="/tools/json-to-csv" icon="📄" />
           <ToolCard title="CSV → Excel" description="Spreadsheet ready" href="/tools/csv-to-excel" icon="📊" />
-          <ToolCard title="JSON → Excel" description="Excel friendly JSON" href="/tools/json-to-excel" icon="📈" />
         </div>
 
-        <SectionHeader title="🧮 Diff Checkers" subtitle="Compare text and files side-by-side with visual differences" />
-        <div style={grid}>
-          <ToolCard title="Text Diff Checker" description="Compare text line-by-line" href="/tools/diffchecker" icon="📝" />
-          <ToolCard title="CSV Diff Checker" description="Highlight row & column differences" href="/tools/csv-diff" icon="🔍" />
-          {/* Excel diff checker commented out as requested */}
-          {/*
-          <ToolCard
-            title="Excel Diff Checker"
-            description="Compare Excel sheets visually"
-            href="/tools/excel-diff"
-            icon="📊"
-          />
-          */}
+        <SectionHeader title="⚡ Generators" subtitle="Developer utilities for IDs, text, and styles" />
+        <div style={gridStyle}>
+          <ToolCard title="Dummy Data" description="Realistic test datasets" href="/tools/generators/dummy-data" icon="🧪" />
+          <ToolCard title="Slug Generator" description="URL-friendly strings" href="/tools/generators/slug" icon="🐌" />
+          <ToolCard title="Box Shadow" description="Visual CSS generator" href="/tools/generators/box-shadow" icon="🔳" />
+          <ToolCard title="GUID Generator" description="Generate unique IDs" href="/tools/generators/guid" icon="🆔" />
+          <ToolCard title="Password Generator" description="Secure passwords" href="/tools/generators/password" icon="🔐" />
+          <ToolCard title="TinyURL" description="Shorten links" href="/tools/generators/tinyurl" icon="🔗" />
         </div>
-
-        <SectionHeader title="⚡ Generators" subtitle="Generate passwords, GUIDs, slugs, dummy data and secure short links" />
-        <div style={grid}>
-          <ToolCard title="GUID Generator" description="Generate unique IDs for your data" href="/tools/generators/guid" icon="🆔" />
-          <ToolCard title="Strong Password Generator" description="Create secure passwords instantly" href="/tools/generators/password" icon="🔐" />
-          <ToolCard title="Box Shadow CSS Generator" description="Design and copy box-shadow CSS" href="/tools/generators/box-shadow" icon="🧊" />
-          <ToolCard title="Slug Generator" description="SEO-friendly URL slugs" href="/tools/generators/slug" icon="🔗" />
-          <ToolCard title="Dummy Data Generator" description="Generate realistic test data" href="/tools/generators/dummy-data" icon="🧪" />
-          <ToolCard title="TinyURL Generator" description="Shorten links securely" href="/tools/generators/tinyurl" icon="🔗" />
-          {/* Prompt generators commented out as requested */}
-          {/*
-          <ToolCard title="AI Prompts Generator" description="Create helpful prompt templates" href="/tools/generators/ai-prompts" icon="✨" />
-          <ToolCard title="ChatGPT Prompt Generator" description="Prompt builder" href="/tools/generators/chatgpt-prompts" icon="💬" />
-          <ToolCard title="Prompt Generator for Coders" description="Prompts for coding tasks" href="/tools/generators/coder-prompts" icon="🧑‍💻" />
-          <ToolCard title="Safety Prompt Generator" description="Prompts with guardrails" href="/tools/generators/safety-prompts" icon="🛡️" />
-          */}
-        </div>
-
-        {/* AI conversions section commented out as requested */}
-        {/*
-        <SectionHeader title="🤖 AI Conversions" subtitle="Convert any format to any format" />
-        <div style={grid}>
-          <ToolCard title="Any → Any Converter" description="Universal conversion" href="/tools/ai-convert" icon="🧠" />
-        </div>
-        */}
       </section>
 
-      {/* TAGS / HASHTAGS */}
+      {/* TAGS SECTION */}
       <section id="tags" style={{ padding: "10px 24px 70px", maxWidth: 1160, margin: "0 auto" }}>
         <h2 style={{ fontSize: 26, fontWeight: 900 }}>Capabilities</h2>
-        <p style={{ color: "#6b7280", marginTop: 6, marginBottom: 14 }}>
-          Search-friendly tags describing what Jhatpat can do.
-        </p>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
           {TAGS.map((t) => (
-            <span
-              key={t}
-              style={{
-                background: "#e0f2fe",
-                border: "1px solid #bae6fd",
-                color: "#075985",
-                padding: "8px 12px",
-                borderRadius: 999,
-                fontWeight: 800,
-                fontSize: 12,
-                letterSpacing: 0.2,
-              }}
-            >
-              {t}
-            </span>
+            <span key={t} style={tagStyle}>{t}</span>
           ))}
         </div>
-
-        <footer style={{ marginTop: 26, color: "#6b7280", fontSize: 13 }}>
-          © {new Date().getFullYear()} Jhatpat. Tools designed for fast workflows and privacy-first conversions.
+        <footer style={{ marginTop: 40, color: "#6b7280", fontSize: 13, textAlign: "center" }}>
+          © {new Date().getFullYear()} Jhatpat. Privacy-first web utilities.
         </footer>
       </section>
     </main>
@@ -257,30 +117,21 @@ export default function HomePage() {
 }
 
 /* ------------------ */
-/* SHARED COMPONENTS */
+/* COMPONENTS */
 /* ------------------ */
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div style={{ marginTop: 52 }}>
+    <div style={{ marginTop: 52, marginBottom: 22 }}>
       <h2 style={{ fontSize: 30, fontWeight: 900 }}>{title}</h2>
-      <p style={{ color: "#6b7280", marginBottom: 22, marginTop: 8 }}>{subtitle}</p>
+      <p style={{ color: "#6b7280", marginTop: 8 }}>{subtitle}</p>
     </div>
   );
 }
 
 function TrustPill({ title, desc, icon }: { title: string; desc: string; icon: string }) {
   return (
-    <div
-      style={{
-        border: "1px solid #e5e7eb",
-        borderRadius: 16,
-        padding: 14,
-        display: "flex",
-        gap: 12,
-        alignItems: "center",
-      }}
-    >
+    <div style={pillStyle}>
       <div style={{ fontSize: 22 }}>{icon}</div>
       <div>
         <div style={{ fontWeight: 900 }}>{title}</div>
@@ -290,8 +141,70 @@ function TrustPill({ title, desc, icon }: { title: string; desc: string; icon: s
   );
 }
 
-const grid: React.CSSProperties = {
+/* ------------------ */
+/* STYLE OBJECTS */
+/* ------------------ */
+
+const gridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
   gap: 22,
+};
+
+const trustGrid: React.CSSProperties = {
+  maxWidth: 1100,
+  margin: "0 auto",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  gap: 14,
+};
+
+const tagStyle: React.CSSProperties = {
+  background: "#e0f2fe",
+  border: "1px solid #bae6fd",
+  color: "#075985",
+  padding: "8px 12px",
+  borderRadius: 999,
+  fontWeight: 800,
+  fontSize: 12,
+};
+
+const primaryBtn: React.CSSProperties = {
+  background: "#2563eb",
+  padding: "14px 22px",
+  borderRadius: 14,
+  color: "white",
+  fontWeight: 800,
+  textDecoration: "none",
+};
+
+const secondaryBtn: React.CSSProperties = {
+  background: "rgba(255,255,255,0.08)",
+  padding: "14px 22px",
+  borderRadius: 14,
+  color: "white",
+  fontWeight: 800,
+  textDecoration: "none",
+  border: "1px solid rgba(255,255,255,0.16)",
+};
+
+const pillBadge: React.CSSProperties = {
+  display: "inline-flex",
+  gap: 10,
+  alignItems: "center",
+  padding: "10px 14px",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const pillStyle: React.CSSProperties = {
+  border: "1px solid #e5e7eb",
+  borderRadius: 16,
+  padding: 14,
+  display: "flex",
+  gap: 12,
+  alignItems: "center",
 };

@@ -19,11 +19,10 @@ export default function BoxShadowGeneratorPage() {
 
   const css = useMemo(() => {
     const a = clamp(opacity, 0, 1);
-    // Convert hex to rgba
     const hex = color.replace("#", "");
-    const r = parseInt(hex.slice(0, 2), 16);
-    const g = parseInt(hex.slice(2, 4), 16);
-    const b = parseInt(hex.slice(4, 6), 16);
+    const r = parseInt(hex.slice(0, 2), 16) || 0;
+    const g = parseInt(hex.slice(2, 4), 16) || 0;
+    const b = parseInt(hex.slice(4, 6), 16) || 0;
 
     return `box-shadow: ${x}px ${y}px ${blur}px ${spread}px rgba(${r}, ${g}, ${b}, ${a});`;
   }, [x, y, blur, spread, opacity, color]);
@@ -35,7 +34,7 @@ export default function BoxShadowGeneratorPage() {
       borderRadius: 18,
       background: "white",
       border: "1px solid #eef2f7",
-      boxShadow: css.replace("box-shadow:", "").replace(";", "") as any,
+      boxShadow: css.replace("box-shadow:", "").replace(";", "").trim(),
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -48,11 +47,12 @@ export default function BoxShadowGeneratorPage() {
   async function copy() {
     await navigator.clipboard.writeText(css);
     setStatus("Copied CSS ✅");
-    trackUsage("box-shadow-generator", "copy", { css });
+    // Removed metadata to match standard TrackPayload interface
+    trackUsage({ tool: "box-shadow-generator", action: "copy" });
   }
 
   function download() {
-    const blob = new Blob([`.card {\n  ${css}\n}\n`], { type: "text/css" });
+    const blob = new Blob([`.card {\n   ${css}\n}\n`], { type: "text/css" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -60,7 +60,8 @@ export default function BoxShadowGeneratorPage() {
     a.click();
     URL.revokeObjectURL(url);
     setStatus("Downloaded box-shadow.css ✅");
-    trackUsage("box-shadow-generator", "download", { css });
+    // Removed metadata to match standard TrackPayload interface
+    trackUsage({ tool: "box-shadow-generator", action: "download" });
   }
 
   function randomize() {
@@ -69,7 +70,7 @@ export default function BoxShadowGeneratorPage() {
     setBlur(Math.floor(Math.random() * 60) + 10);
     setSpread(Math.floor(Math.random() * 20) - 5);
     setOpacity(Math.round((Math.random() * 0.35 + 0.05) * 100) / 100);
-    trackUsage("box-shadow-generator", "randomize");
+    trackUsage({ tool: "box-shadow-generator", action: "randomize" });
     setStatus("");
   }
 
@@ -92,7 +93,7 @@ export default function BoxShadowGeneratorPage() {
             </div>
           </div>
 
-          {status && <p style={{ marginTop: 10 }}>{status}</p>}
+          {status && <p style={{ marginTop: 10, color: "#10b981", fontWeight: 600 }}>{status}</p>}
 
           <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
             <Slider label="X offset" value={x} min={-50} max={50} step={1} onChange={setX} />
@@ -103,7 +104,7 @@ export default function BoxShadowGeneratorPage() {
 
             <div style={card}>
               <label style={label}>Color</label>
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ width: "100%", height: 44 }} />
+              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ width: "100%", height: 44, border: 'none', background: 'none' }} />
               <p style={hint}>Pick the shadow color.</p>
             </div>
           </div>
@@ -123,6 +124,7 @@ export default function BoxShadowGeneratorPage() {
   );
 }
 
+// ... (Slider, panel, codeBox, etc. constants stay the same)
 function Slider({
   label: labelText,
   value,
