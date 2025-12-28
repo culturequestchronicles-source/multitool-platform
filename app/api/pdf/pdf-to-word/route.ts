@@ -93,9 +93,20 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const parsed = await (pdfParse as any)(buffer);
-
-    const text = String(parsed?.text || "").trim();
+    let text = "";
+    if (typeof (pdfParse as any) === "function") {
+      const parsed = await (pdfParse as any)(buffer);
+      text = String(parsed?.text || "").trim();
+    } else if ((pdfParse as any)?.PDFParse) {
+      const parser = new (pdfParse as any).PDFParse({ data: buffer });
+      const parsed = await parser.getText();
+      text = String(parsed?.text || "").trim();
+      if (typeof parser.destroy === "function") {
+        await parser.destroy();
+      }
+    } else {
+      throw new Error("Unsupported pdf-parse module shape.");
+    }
 
 
 
