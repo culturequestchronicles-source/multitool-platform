@@ -50,7 +50,9 @@ ensurePdfJsPolyfills();
 
 async function ensurePdfJsWorker() {
   if (!(globalThis as any).pdfjsWorker?.WorkerMessageHandler) {
-    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    const workerModule = await import(
+      "pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"
+    );
     (globalThis as any).pdfjsWorker = workerModule;
   }
 }
