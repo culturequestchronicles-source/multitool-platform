@@ -80,7 +80,6 @@ function noStoreHeaders(extra: Record<string, string>) {
 export async function POST(req: Request) {
 
   try {
-    await ensurePdfJsWorker();
     const pdfParseModule = await import("pdf-parse");
     const pdfParse =
       (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
@@ -105,10 +104,10 @@ export async function POST(req: Request) {
 
     let text = "";
     if (typeof (pdfParse as any) === "function") {
-      const parsed = await (pdfParse as any)(buffer, { disableWorker: true });
+      const parsed = await (pdfParse as any)(buffer);
       text = String(parsed?.text || "").trim();
     } else if ((pdfParse as any)?.PDFParse) {
-      const parser = new (pdfParse as any).PDFParse({ data: buffer, disableWorker: true });
+      const parser = new (pdfParse as any).PDFParse({ data: buffer });
       const parsed = await parser.getText();
       text = String(parsed?.text || "").trim();
       if (typeof parser.destroy === "function") {
