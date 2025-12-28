@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-import * as pdfParse from "pdf-parse";
-
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
 
@@ -72,6 +70,7 @@ export async function POST(req: Request) {
 
   try {
     ensurePdfJsPolyfills();
+    const { default: pdfParse } = await import("pdf-parse");
 
     const form = await req.formData();
 
