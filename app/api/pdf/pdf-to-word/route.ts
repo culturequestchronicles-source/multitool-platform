@@ -48,6 +48,29 @@ function ensurePdfJsPolyfills() {
 
 ensurePdfJsPolyfills();
 
+async function ensurePdfJsWorker() {
+  if (!(globalThis as any).pdfjsWorker?.WorkerMessageHandler) {
+    const [{ createRequire }, { pathToFileURL }, path] = await Promise.all([
+      import("node:module"),
+      import("node:url"),
+      import("node:path"),
+    ]);
+    const require = createRequire(import.meta.url);
+    const pdfParseEntry = require.resolve("pdf-parse");
+    const pdfParseDir = path.dirname(pdfParseEntry);
+    const workerPath = path.join(
+      pdfParseDir,
+      "node_modules",
+      "pdfjs-dist",
+      "legacy",
+      "build",
+      "pdf.worker.mjs"
+    );
+    const workerModule = await import(pathToFileURL(workerPath).href);
+    (globalThis as any).pdfjsWorker = workerModule;
+  }
+}
+
 
 
 function noStoreHeaders(extra: Record<string, string>) {
@@ -71,6 +94,7 @@ function noStoreHeaders(extra: Record<string, string>) {
 export async function POST(req: Request) {
 
   try {
+    await ensurePdfJsWorker();
     const pdfParseModule = await import("pdf-parse");
     const pdfParse =
       (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
@@ -95,10 +119,10 @@ export async function POST(req: Request) {
 
     let text = "";
     if (typeof (pdfParse as any) === "function") {
-      const parsed = await (pdfParse as any)(buffer);
+      const parsed = await (pdfParse as any)(buffer, { disableWorker: true });
       text = String(parsed?.text || "").trim();
     } else if ((pdfParse as any)?.PDFParse) {
-      const parser = new (pdfParse as any).PDFParse({ data: buffer });
+      const parser = new (pdfParse as any).PDFParse({ data: buffer, disableWorker: true });
       const parsed = await parser.getText();
       text = String(parsed?.text || "").trim();
       if (typeof parser.destroy === "function") {
