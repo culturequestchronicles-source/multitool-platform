@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, PDFFont, StandardFonts, rgb } from "pdf-lib";
 import mammoth from "mammoth";
 import { noStoreHeaders } from "../../../../lib/http";
 
@@ -75,17 +75,16 @@ export async function POST(req: Request) {
       }),
     });
     
-  } catch (e: any) {
-    console.error("Word-to-PDF error:", e);
-    return NextResponse.json(
-      { error: e?.message || "Word to PDF failed" }, 
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    console.error("Word-to-PDF error:", err);
+    const message =
+      err instanceof Error ? err.message : "Word to PDF failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 // Helper function to wrap text within margins
-function wrapText(text: string, font: any, size: number, maxWidth: number) {
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number) {
   const words = text.replace(/\r/g, "").split(/\s+/);
   const lines: string[] = [];
   let currentLine = "";

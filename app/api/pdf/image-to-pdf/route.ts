@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFImage } from "pdf-lib";
 import { noStoreHeaders } from "../../../../lib/http";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
     for (const f of files) {
       const bytes = Buffer.from(await f.arrayBuffer());
-      let img;
+      let img: PDFImage;
       if (f.type === "image/png") img = await pdf.embedPng(bytes);
       else img = await pdf.embedJpg(bytes);
 
@@ -35,7 +35,9 @@ export async function POST(req: Request) {
         "Content-Disposition": 'attachment; filename="images.pdf"',
       }),
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Image to PDF failed" }, { status: 500 });
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Image to PDF failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

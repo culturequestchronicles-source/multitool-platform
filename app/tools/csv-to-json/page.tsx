@@ -5,15 +5,19 @@ import Papa from "papaparse";
 import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
 
 type OutputType = "array" | "hash" | "minify";
+type CsvRow = Record<string, string | number | boolean | null>;
+type JsonOutput =
+  | CsvRow[]
+  | Array<Record<string, unknown>>
+  | Array<unknown[]>
+  | string;
 
 export default function CsvConverterPage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string>("");
-  // Fix 1: Changed type to 'any' to allow both Array and String (for minify)
-  const [jsonOutput, setJsonOutput] = useState<any>([]);
+  const [jsonOutput, setJsonOutput] = useState<JsonOutput>([]);
   const [separator, setSeparator] = useState<string>("");
   const [parseNumbers, setParseNumbers] = useState(true);
-  const [parseJson, setParseJson] = useState(true);
   const [transpose, setTranspose] = useState(false);
   const [outputType, setOutputType] = useState<OutputType>("array");
   const [prompt, setPrompt] = useState<string>("");
@@ -30,27 +34,26 @@ export default function CsvConverterPage() {
 
   function handleConvert() {
     if (!csvText) return;
-    const results = Papa.parse(csvText, {
+    const results = Papa.parse<CsvRow>(csvText, {
       header: true,
       skipEmptyLines: true,
       dynamicTyping: parseNumbers,
       delimiter: separator || undefined,
     });
 
-    let data = results.data;
+    let data: CsvRow[] | Array<unknown[]> = results.data;
 
     if (transpose) {
-      // Fix 2: Cast row to 'any' so TypeScript allows row[k] access
-      const keys = Object.keys(data[0] || {});
-      const transposed: any[] = keys.map((k) =>
-        data.map((row: any) => row[k])
+      const keys = Object.keys((data[0] as CsvRow) || {});
+      const transposed = keys.map((k) =>
+        (data as CsvRow[]).map((row) => row[k])
       );
       data = transposed;
     }
 
     if (outputType === "hash") {
-      const hash: Record<string, any> = {};
-      data.forEach((row: any, i) => {
+      const hash: Record<string, unknown> = {};
+      data.forEach((row, i) => {
         hash[i] = row;
       });
       setJsonOutput([hash]);
@@ -78,8 +81,10 @@ export default function CsvConverterPage() {
       });
       const data = await res.json();
       setAiResponse(data.text || "AI returned no response");
-    } catch (err: any) {
-      setAiResponse("Error: " + err.message);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Unexpected error";
+      setAiResponse("Error: " + message);
     }
   }
 

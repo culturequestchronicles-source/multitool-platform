@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 
 export default function ImageToPdfPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -16,6 +17,12 @@ export default function ImageToPdfPage() {
       size: f.size,
     }));
   }, [files]);
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [previews]);
 
   function onPick(list: FileList | null) {
     setError("");
@@ -59,8 +66,10 @@ export default function ImageToPdfPage() {
       URL.revokeObjectURL(url);
 
       setProgress(100);
-    } catch (e: any) {
-      setError(e?.message || "Something went wrong");
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Something went wrong";
+      setError(message);
     } finally {
       setBusy(false);
       setTimeout(() => setProgress(0), 600);
@@ -164,9 +173,12 @@ export default function ImageToPdfPage() {
                 </div>
 
                 {p.type.startsWith("image/") ? (
-                  <img
+                  <Image
                     src={p.url}
                     alt={p.name}
+                    width={160}
+                    height={110}
+                    unoptimized
                     style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10 }}
                   />
                 ) : (

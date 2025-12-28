@@ -111,10 +111,9 @@ export async function POST(req: Request) {
       { error: "Failed to generate unique code. Try again." },
       { status: 500 }
     );
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "Unexpected error" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Unexpected error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

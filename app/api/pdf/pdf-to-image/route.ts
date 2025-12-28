@@ -6,6 +6,9 @@ import { createJob, updateJob } from "../../../../lib/jobStore"; // use relative
 
 export const runtime = "nodejs";
 
+const getErrorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -21,17 +24,17 @@ export async function POST(req: Request) {
 
     const job = createJob();
 
-    processJob(job.jobId, file).catch((err: any) => {
+    processJob(job.jobId, file).catch((err: unknown) => {
       updateJob(job.jobId, {
         status: "error",
-        message: err?.message || String(err),
+        message: getErrorMessage(err),
       });
     });
 
     return NextResponse.json({ jobId: job.jobId });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err?.message || "Failed to start conversion" },
+      { error: getErrorMessage(err) || "Failed to start conversion" },
       { status: 500 }
     );
   }

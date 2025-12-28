@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next"; // Vercel Analytics
 import Script from "next/script"; // For Google AdSense
+import Link from "next/link";
 
 export const viewport: Viewport = {
   themeColor: "#2563eb",
@@ -50,12 +51,12 @@ export default function RootLayout({
         {/* Navigation Bar with Key Highlights */}
         <nav style={navStyle}>
           <div style={navContainer}>
-            <a href="/" style={logoStyle}>Jhatpat</a>
+            <Link href="/" style={logoStyle}>Jhatpat</Link>
             <div style={linksStyle}>
-              <a href="/tools/generators/tinyurl" style={highlightLink}>Shorten URL</a>
-              <a href="/tools/generators/dummy-data" style={highlightLink}>Generate Data</a>
+              <Link href="/tools/generators/tinyurl" style={highlightLink}>Shorten URL</Link>
+              <Link href="/tools/generators/dummy-data" style={highlightLink}>Generate Data</Link>
               <div style={divider} />
-              <a href="/#tools" style={navLink}>All Tools</a>
+              <Link href="/#tools" style={navLink}>All Tools</Link>
             </div>
           </div>
         </nav>
@@ -75,7 +76,7 @@ export default function RootLayout({
               </div>
               <div>
                 <h3 style={footerHeading}>🔒 Privacy First</h3>
-                <p>Whether you're merging PDFs or generating passwords, your data never leaves your machine. We use client-side processing for total security.</p>
+                <p>Whether you&apos;re merging PDFs or generating passwords, your data never leaves your machine. We use client-side processing for total security.</p>
               </div>
             </div>
             <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', fontSize: '13px' }}>

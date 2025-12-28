@@ -119,7 +119,7 @@ function generatePassword(opts: {
 async function optionalTrack(event: {
   tool: string;
   action: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
 }) {
   // Optional: if /api/track exists, it will log. If not, fail silently.
   try {
@@ -173,9 +173,11 @@ export default function PasswordGeneratorPage() {
           noAmbiguous,
         },
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       setPassword("");
-      setStatus(e?.message || "Unable to generate password");
+      const message =
+        e instanceof Error ? e.message : "Unable to generate password";
+      setStatus(message);
     }
   }
 

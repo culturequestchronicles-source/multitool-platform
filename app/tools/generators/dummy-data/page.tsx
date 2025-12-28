@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 
 // --- Types & Constants ---
 type FieldType = "Name" | "Phone" | "Email" | "Street Address" | "Postal/Zip" | "Region" | "Country" | "List" | "Word" | "Number" | "Currency" | "Alphanumeric";
@@ -11,6 +11,8 @@ interface SchemaCol {
   name: string;
   type: FieldType;
 }
+
+type GeneratedRow = Record<string, string | number>;
 
 const ALL_FIELDS: FieldType[] = ["Name", "Phone", "Email", "Street Address", "Postal/Zip", "Region", "Country", "List", "Word", "Number", "Currency", "Alphanumeric"];
 const ALL_FORMATS: Format[] = ["JSON", "CSV", "SQL", "XML", "HTML", "JavaScript", "TypeScript", "PHP", "Perl", "C#", "Ruby", "Python", "Word", "PDF"];
@@ -47,42 +49,66 @@ function genValue(type: FieldType, i: number): string | number {
 
 // --- Formatting Engine ---
 const formatters = {
-  csv: (rows: any[]) => {
-    const keys = Object.keys(rows[0] || {});
-    return [keys.join(","), ...rows.map(r => keys.map(k => `"${r[k]}"`).join(","))].join("\n");
+  csv: (rows: GeneratedRow[]) => {
+    if (!rows.length) return "";
+    const keys = Object.keys(rows[0]);
+    return [
+      keys.join(","),
+      ...rows.map((r) => keys.map((k) => `"${r[k]}"`).join(",")),
+    ].join("\n");
   },
-  sql: (rows: any[], table = "dummy_data") => {
-    const keys = Object.keys(rows[0] || {});
-    const values = rows.map(r => `(${keys.map(k => typeof r[k] === 'number' ? r[k] : `'${r[k]}'`).join(", ")})`).join(",\n");
+  sql: (rows: GeneratedRow[], table = "dummy_data") => {
+    if (!rows.length) return "";
+    const keys = Object.keys(rows[0]);
+    const values = rows
+      .map((r) =>
+        `(${keys
+          .map((k) =>
+            typeof r[k] === "number"
+              ? r[k]
+              : `'${String(r[k]).replace(/'/g, "''")}'`
+          )
+          .join(", ")})`
+      )
+      .join(",\n");
     return `INSERT INTO ${table} (${keys.join(", ")}) VALUES\n${values};`;
   },
-  xml: (rows: any[]) => {
-    const items = rows.map(r => `  <item>\n${Object.entries(r).map(([k, v]) => `    <${k}>${v}</${k}>`).join("\n")}\n  </item>`).join("\n");
+  xml: (rows: GeneratedRow[]) => {
+    const items = rows
+      .map(
+        (r) =>
+          `  <item>\n${Object.entries(r)
+            .map(([k, v]) => `    <${k}>${v}</${k}>`)
+            .join("\n")}\n  </item>`
+      )
+      .join("\n");
     return `<?xml version="1.0" encoding="UTF-8"?>\n<root>\n${items}\n</root>`;
   },
-  php: (rows: any[]) => `<?php\n$data = ${JSON.stringify(rows, null, 2).replace(/\[/g, 'array(').replace(/\]/g, ')')};`,
-  python: (rows: any[]) => `data = ${JSON.stringify(rows, null, 2)}`,
-  ruby: (rows: any[]) => `require 'json'\ndata = JSON.parse('${JSON.stringify(rows)}')`,
+  php: (rows: GeneratedRow[]) =>
+    `<?php\n$data = ${JSON.stringify(rows, null, 2)
+      .replace(/\[/g, "array(")
+      .replace(/\]/g, ")")};`,
+  python: (rows: GeneratedRow[]) => `data = ${JSON.stringify(rows, null, 2)}`,
+  ruby: (rows: GeneratedRow[]) => `require 'json'\ndata = JSON.parse('${JSON.stringify(rows)}')`,
 };
 
 export default function DummyDataGeneratorPage() {
-  const [mounted, setMounted] = useState(false);
-  const [schema, setSchema] = useState<SchemaCol[]>([]);
+  const [schema, setSchema] = useState<SchemaCol[]>(() => [
+    { id: uid(), name: "id", type: "Alphanumeric" },
+    { id: uid(), name: "full_name", type: "Name" },
+  ]);
   const [rowsCount, setRowsCount] = useState(10);
   const [format, setFormat] = useState<Format>("JSON");
   const [output, setOutput] = useState("");
   const [apiMode, setApiMode] = useState(false);
   const [apiEndpoint, setApiEndpoint] = useState("https://api.example.com/v1/data");
 
-  useEffect(() => {
-    setSchema([{ id: uid(), name: "id", type: "Alphanumeric" }, { id: uid(), name: "full_name", type: "Name" }]);
-    setMounted(true);
-  }, []);
-
   const generatedData = useMemo(() => {
     return Array.from({ length: rowsCount }, (_, i) => {
-      const row: any = {};
-      schema.forEach(col => { row[col.name] = genValue(col.type, i); });
+      const row: GeneratedRow = {};
+      schema.forEach((col) => {
+        row[col.name] = genValue(col.type, i);
+      });
       return row;
     });
   }, [schema, rowsCount]);
@@ -100,8 +126,6 @@ export default function DummyDataGeneratorPage() {
     }
     setOutput(result);
   };
-
-  if (!mounted) return null;
 
   return (
     <main style={{ background: BLUE.bg, minHeight: "100vh", padding: 40, color: BLUE.text }}>
@@ -184,7 +208,15 @@ export default function DummyDataGeneratorPage() {
             <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 12, color: BLUE.sub }}>Rows</label>
-                <input type="number" value={rowsCount} onChange={e => setRowsCount(parseInt(e.target.value))} style={{ width: "100%", background: BLUE.card2, color: "white", border: `1px solid ${BLUE.border}`, padding: "10px", borderRadius: 10 }} />
+                <input
+                  type="number"
+                  value={rowsCount}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setRowsCount(Number.isFinite(next) ? next : 0);
+                  }}
+                  style={{ width: "100%", background: BLUE.card2, color: "white", border: `1px solid ${BLUE.border}`, padding: "10px", borderRadius: 10 }}
+                />
               </div>
               <button 
                 onClick={handleGenerate}
@@ -205,7 +237,7 @@ export default function DummyDataGeneratorPage() {
               <div style={{ marginTop: 15, padding: 15, background: BLUE.card2, borderRadius: 12, border: `1px solid ${BLUE.accent}` }}>
                 <p style={{ fontSize: 12, marginBottom: 8, fontWeight: 700 }}>cURL Command:</p>
                 <code style={{ fontSize: 10, wordBreak: "break-all", color: BLUE.accent2 }}>
-                  curl -X POST {apiEndpoint} -H "Content-Type: application/json" -d '{JSON.stringify(generatedData[0])}'
+                  {`curl -X POST ${apiEndpoint} -H "Content-Type: application/json" -d '${JSON.stringify(generatedData[0] ?? {})}'`}
                 </code>
               </div>
             )}

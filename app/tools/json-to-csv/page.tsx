@@ -9,7 +9,7 @@ export default function JsonToCsvPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
 
-  function jsonToCsv(json: any[]) {
+  function jsonToCsv(json: Record<string, unknown>[]) {
     if (!json.length) return "";
 
     const headers = Object.keys(json[0]);
@@ -42,8 +42,10 @@ export default function JsonToCsvPage() {
       setCsvOutput(csv);
 
       setProgress(100);
-    } catch (e: any) {
-      setError(e.message || "Invalid JSON");
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Invalid JSON";
+      setError(message);
     } finally {
       setTimeout(() => {
         setLoading(false);

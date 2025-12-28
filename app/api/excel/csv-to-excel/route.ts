@@ -49,10 +49,9 @@ export async function POST(req: Request) {
         "Content-Disposition": `attachment; filename="converted.xlsx"`,
       },
     });
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "Conversion failed" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Conversion failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

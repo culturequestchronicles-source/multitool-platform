@@ -4,6 +4,10 @@ import { Document, Packer, Paragraph, TextRun } from "docx";
 
 export const runtime = "nodejs";
 
+type PdfParseResult = {
+  text?: string;
+};
+
 function noStoreHeaders(extra: Record<string, string>) {
   return {
     ...extra,
@@ -24,8 +28,9 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = await (pdfParse as any)(buffer);
-    const text = String(parsed?.text || "").trim();
+    const parsePdf = pdfParse as unknown as (data: Buffer) => Promise<PdfParseResult>;
+    const parsed = await parsePdf(buffer);
+    const text = String(parsed.text || "").trim();
 
     const doc = new Document({
       sections: [
@@ -42,9 +47,8 @@ export async function POST(req: Request) {
     // 1. Generate the docx buffer
     const out = await Packer.toBuffer(doc);
 
-    // 2. THE FIX: Convert to Uint8Array directly. 
-    // Using 'as any' here breaks the strict link to SharedArrayBuffer that triggers the build error.
-    const body = new Uint8Array(out as any);
+    // 2. THE FIX: Convert to Uint8Array directly.
+    const body = new Uint8Array(out);
 
     // 3. Return a standard Response using the bytes directly (skipping Blob)
     return new Response(body, {
@@ -54,8 +58,10 @@ export async function POST(req: Request) {
         "Content-Disposition": 'attachment; filename="converted.docx"',
       }),
     });
-  } catch (e: any) {
-    console.error("PDF-to-Word Error:", e);
-    return NextResponse.json({ error: e?.message || "PDF to Word failed" }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("PDF-to-Word Error:", err);
+    const message =
+      err instanceof Error ? err.message : "PDF to Word failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

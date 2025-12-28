@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 function b64ToBlobUrl(b64: string) {
   const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -15,7 +15,7 @@ export default function SplitPdfPage() {
   const [progress, setProgress] = useState(0);
   const [msg, setMsg] = useState("");
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!file) return;
 
@@ -32,10 +32,11 @@ export default function SplitPdfPage() {
 
       setProgress(65);
 
-      const data = await res.json();
+      const data: { pages?: { name: string; b64: string }[]; error?: string } =
+        await res.json();
       if (!res.ok) throw new Error(data.error || "Split failed");
 
-      const pages = data.pages as { name: string; b64: string }[];
+      const pages = data.pages;
       if (!pages || pages.length === 0) throw new Error("No pages returned");
 
       setProgress(80);
@@ -52,8 +53,10 @@ export default function SplitPdfPage() {
 
       setProgress(100);
       setMsg(`✅ Downloaded ${pages.length} page PDFs.`);
-    } catch (e: any) {
-      setMsg(`❌ ${e.message || "Something went wrong"}`);
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Something went wrong";
+      setMsg(`❌ ${message}`);
     } finally {
       setBusy(false);
       setTimeout(() => setProgress(0), 600);

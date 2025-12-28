@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 function fmtBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -21,7 +21,7 @@ export default function CompressPdfPage() {
     setFile(f);
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!file) return;
 
@@ -55,8 +55,10 @@ export default function CompressPdfPage() {
 
       setProgress(100);
       setMsg("✅ Compressed PDF downloaded.");
-    } catch (e: any) {
-      setMsg(`❌ ${e.message || "Something went wrong"}`);
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Something went wrong";
+      setMsg(`❌ ${message}`);
     } finally {
       setBusy(false);
       setTimeout(() => setProgress(0), 600);

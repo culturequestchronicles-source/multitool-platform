@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 export default function CsvToExcelPage() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("");
 
@@ -47,8 +47,10 @@ export default function CsvToExcelPage() {
 
       URL.revokeObjectURL(url);
       setStatus("Downloaded converted.xlsx ✅");
-    } catch (err: any) {
-      setStatus(err?.message || "Unexpected error");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Unexpected error";
+      setStatus(message);
     } finally {
       setLoading(false);
     }

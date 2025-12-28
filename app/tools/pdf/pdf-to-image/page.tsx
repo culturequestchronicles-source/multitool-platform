@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 export default function PdfToImagePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -13,7 +14,7 @@ export default function PdfToImagePage() {
 
   const canStart = useMemo(() => !!file && status !== "running", [file, status]);
 
-  async function startConvert(e: any) {
+  async function startConvert(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setMessage("");
@@ -70,8 +71,10 @@ export default function PdfToImagePage() {
         if (data.status === "done" || data.status === "error") {
           clearInterval(interval);
         }
-      } catch (e: any) {
-        setError(e.message || "Polling failed");
+      } catch (e: unknown) {
+        const message =
+          e instanceof Error ? e.message : "Polling failed";
+        setError(message);
         setStatus("error");
         clearInterval(interval);
       }
@@ -190,10 +193,13 @@ export default function PdfToImagePage() {
                 <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>
                   Page {p.page}
                 </div>
-                <img
+                <Image
                   src={p.dataUrl}
                   alt={`Page ${p.page}`}
-                  style={{ width: "100%", borderRadius: 10 }}
+                  width={320}
+                  height={420}
+                  unoptimized
+                  style={{ width: "100%", height: "auto", borderRadius: 10 }}
                 />
               </div>
             ))}

@@ -32,7 +32,9 @@ export async function POST(req: Request) {
         "Content-Disposition": 'attachment; filename="split-pages.zip"',
       }),
     });
-  } catch (e: any) {
-    return Response.json({ error: e?.message || "Split failed" }, { status: 500 });
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Split failed";
+    return Response.json({ error: message }, { status: 500 });
   }
 }

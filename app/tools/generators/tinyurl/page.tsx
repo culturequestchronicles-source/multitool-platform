@@ -40,8 +40,10 @@ export default function TinyUrlGeneratorPage() {
 
       setResult(data);
       setStatus("TinyURL created ✅");
-    } catch (e: any) {
-      setStatus(e?.message || "Network error");
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Network error";
+      setStatus(message);
     } finally {
       setLoading(false);
     }

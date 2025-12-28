@@ -4,12 +4,16 @@ import { useState } from "react";
 import Papa from "papaparse";
 
 type Row = Record<string, string>;
+type DiffRow =
+  | { type: "added"; key: string; row: Row }
+  | { type: "removed"; key: string; row: Row }
+  | { type: "modified"; key: string; a: Row; b: Row; changes: Record<string, boolean> };
 
 export default function CSVDiffPage() {
   const [fileA, setFileA] = useState<File | null>(null);
   const [fileB, setFileB] = useState<File | null>(null);
   const [keyColumn, setKeyColumn] = useState("");
-  const [diff, setDiff] = useState<any[]>([]);
+  const [diff, setDiff] = useState<DiffRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
 
   const parseCSV = (file: File): Promise<Row[]> =>
@@ -31,8 +35,12 @@ export default function CSVDiffPage() {
     const dataA = await parseCSV(fileA);
     const dataB = await parseCSV(fileB);
 
-    const mapA = new Map(dataA.map((r) => [r[keyColumn], r]));
-    const mapB = new Map(dataB.map((r) => [r[keyColumn], r]));
+    const mapA = new Map(
+      dataA.map((r) => [String(r[keyColumn] ?? ""), r])
+    );
+    const mapB = new Map(
+      dataB.map((r) => [String(r[keyColumn] ?? ""), r])
+    );
 
     const allKeys = new Set([...mapA.keys(), ...mapB.keys()]);
     const allHeaders = new Set<string>();
@@ -43,7 +51,7 @@ export default function CSVDiffPage() {
 
     setHeaders([...allHeaders]);
 
-    const result = [];
+    const result: DiffRow[] = [];
 
     for (const key of allKeys) {
       const a = mapA.get(key);

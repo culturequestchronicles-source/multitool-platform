@@ -34,7 +34,9 @@ export async function POST(req: Request) {
         "Content-Disposition": 'attachment; filename="merged.pdf"',
       }),
     });
-  } catch (e: any) {
-    return Response.json({ error: e?.message || "Merge failed" }, { status: 500 });
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Merge failed";
+    return Response.json({ error: message }, { status: 500 });
   }
 }
