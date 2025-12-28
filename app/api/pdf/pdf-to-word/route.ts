@@ -70,7 +70,9 @@ export async function POST(req: Request) {
 
   try {
     ensurePdfJsPolyfills();
-    const { default: pdfParse } = await import("pdf-parse");
+    const pdfParseModule = await import("pdf-parse");
+    const pdfParse =
+      (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
 
     const form = await req.formData();
 
