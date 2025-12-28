@@ -1,12 +1,52 @@
 import { NextResponse } from "next/server";
 
-import * as pdfParse from "pdf-parse";
-
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
 
 
 export const runtime = "nodejs";
+
+
+
+function ensurePdfJsPolyfills() {
+  if (typeof (globalThis as any).DOMMatrix === "undefined") {
+    class DOMMatrixPolyfill {
+      multiply() {
+        return this;
+      }
+
+      multiplySelf() {
+        return this;
+      }
+
+      invertSelf() {
+        return this;
+      }
+    }
+
+    (globalThis as any).DOMMatrix = DOMMatrixPolyfill;
+  }
+
+  if (typeof (globalThis as any).Path2D === "undefined") {
+    (globalThis as any).Path2D = class {};
+  }
+
+  if (typeof (globalThis as any).ImageData === "undefined") {
+    (globalThis as any).ImageData = class {
+      data: Uint8ClampedArray;
+      height: number;
+      width: number;
+
+      constructor(width = 0, height = 0) {
+        this.width = width;
+        this.height = height;
+        this.data = new Uint8ClampedArray(width * height * 4);
+      }
+    };
+  }
+}
+
+ensurePdfJsPolyfills();
 
 
 
@@ -31,6 +71,9 @@ function noStoreHeaders(extra: Record<string, string>) {
 export async function POST(req: Request) {
 
   try {
+    const pdfParseModule = await import("pdf-parse");
+    const pdfParse =
+      (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
 
     const form = await req.formData();
 
@@ -50,9 +93,20 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const parsed = await (pdfParse as any)(buffer);
-
-    const text = String(parsed?.text || "").trim();
+    let text = "";
+    if (typeof (pdfParse as any) === "function") {
+      const parsed = await (pdfParse as any)(buffer, { disableWorker: true });
+      text = String(parsed?.text || "").trim();
+    } else if ((pdfParse as any)?.PDFParse) {
+      const parser = new (pdfParse as any).PDFParse({ data: buffer, disableWorker: true });
+      const parsed = await parser.getText();
+      text = String(parsed?.text || "").trim();
+      if (typeof parser.destroy === "function") {
+        await parser.destroy();
+      }
+    } else {
+      throw new Error("Unsupported pdf-parse module shape.");
+    }
 
 
 
