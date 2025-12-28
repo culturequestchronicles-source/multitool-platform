@@ -1,12 +1,52 @@
 import { NextResponse } from "next/server";
 
-import * as pdfParse from "pdf-parse";
-
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
 
 
 export const runtime = "nodejs";
+
+
+
+function ensurePdfJsPolyfills() {
+  if (typeof (globalThis as any).DOMMatrix === "undefined") {
+    class DOMMatrixPolyfill {
+      multiply() {
+        return this;
+      }
+
+      multiplySelf() {
+        return this;
+      }
+
+      invertSelf() {
+        return this;
+      }
+    }
+
+    (globalThis as any).DOMMatrix = DOMMatrixPolyfill;
+  }
+
+  if (typeof (globalThis as any).Path2D === "undefined") {
+    (globalThis as any).Path2D = class {};
+  }
+
+  if (typeof (globalThis as any).ImageData === "undefined") {
+    (globalThis as any).ImageData = class {
+      data: Uint8ClampedArray;
+      height: number;
+      width: number;
+
+      constructor(width = 0, height = 0) {
+        this.width = width;
+        this.height = height;
+        this.data = new Uint8ClampedArray(width * height * 4);
+      }
+    };
+  }
+}
+
+ensurePdfJsPolyfills();
 
 
 
@@ -31,6 +71,9 @@ function noStoreHeaders(extra: Record<string, string>) {
 export async function POST(req: Request) {
 
   try {
+    const pdfParseModule = await import("pdf-parse");
+    const pdfParse =
+      (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
 
     const form = await req.formData();
 
