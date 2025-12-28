@@ -46,6 +46,8 @@ function ensurePdfJsPolyfills() {
   }
 }
 
+ensurePdfJsPolyfills();
+
 
 
 function noStoreHeaders(extra: Record<string, string>) {
@@ -69,7 +71,6 @@ function noStoreHeaders(extra: Record<string, string>) {
 export async function POST(req: Request) {
 
   try {
-    ensurePdfJsPolyfills();
     const pdfParseModule = await import("pdf-parse");
     const pdfParse =
       (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
