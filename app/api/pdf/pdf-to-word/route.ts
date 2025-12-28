@@ -48,6 +48,13 @@ function ensurePdfJsPolyfills() {
 
 ensurePdfJsPolyfills();
 
+async function ensurePdfJsWorker() {
+  if (!(globalThis as any).pdfjsWorker?.WorkerMessageHandler) {
+    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    (globalThis as any).pdfjsWorker = workerModule;
+  }
+}
+
 
 
 function noStoreHeaders(extra: Record<string, string>) {
@@ -71,6 +78,7 @@ function noStoreHeaders(extra: Record<string, string>) {
 export async function POST(req: Request) {
 
   try {
+    await ensurePdfJsWorker();
     const pdfParseModule = await import("pdf-parse");
     const pdfParse =
       (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
