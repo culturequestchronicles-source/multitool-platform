@@ -31,7 +31,7 @@
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
-    "pdfjs-dist": "^4.10.38",
+    "pdfjs-dist": "^5.4.296",
     "puppeteer": "^24.34.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

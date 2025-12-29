@@ -50,23 +50,7 @@ ensurePdfJsPolyfills();
 
 async function ensurePdfJsWorker() {
   if (!(globalThis as any).pdfjsWorker?.WorkerMessageHandler) {
-    const [{ createRequire }, { pathToFileURL }, path] = await Promise.all([
-      import("node:module"),
-      import("node:url"),
-      import("node:path"),
-    ]);
-    const require = createRequire(import.meta.url);
-    const pdfParseEntry = require.resolve("pdf-parse");
-    const pdfParseDir = path.dirname(pdfParseEntry);
-    const workerPath = path.join(
-      pdfParseDir,
-      "node_modules",
-      "pdfjs-dist",
-      "legacy",
-      "build",
-      "pdf.worker.mjs"
-    );
-    const workerModule = await import(pathToFileURL(workerPath).href);
+    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
     (globalThis as any).pdfjsWorker = workerModule;
   }
 }
