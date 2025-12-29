@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
 
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = new Uint8Array(await file.arrayBuffer());
 
     const loadingTask = pdfjs.getDocument({
       data: buffer,
