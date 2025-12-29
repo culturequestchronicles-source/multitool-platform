@@ -79,9 +79,7 @@ export async function POST(req: Request) {
 
   try {
     await ensurePdfJsWorker();
-    const pdfParseModule = await import("pdf-parse");
-    const pdfParse =
-      (pdfParseModule as { default?: typeof pdfParseModule }).default ?? pdfParseModule;
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
     const form = await req.formData();
 
@@ -101,19 +99,45 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    const loadingTask = pdfjs.getDocument({
+      data: buffer,
+      disableWorker: true,
+    } as any);
+
     let text = "";
-    if (typeof (pdfParse as any) === "function") {
-      const parsed = await (pdfParse as any)(buffer, { disableWorker: true });
-      text = String(parsed?.text || "").trim();
-    } else if ((pdfParse as any)?.PDFParse) {
-      const parser = new (pdfParse as any).PDFParse({ data: buffer, disableWorker: true });
-      const parsed = await parser.getText();
-      text = String(parsed?.text || "").trim();
-      if (typeof parser.destroy === "function") {
-        await parser.destroy();
+    try {
+      const pdf = await loadingTask.promise;
+      const pageTexts: string[] = [];
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+
+        let pageText = "";
+        for (const item of content.items as Array<{
+          str?: string;
+          hasEOL?: boolean;
+        }>) {
+          if (typeof item.str === "string") {
+            pageText += item.str;
+          }
+          pageText += item.hasEOL ? "\n" : " ";
+        }
+
+        pageTexts.push(pageText.trim());
       }
-    } else {
-      throw new Error("Unsupported pdf-parse module shape.");
+
+      text = pageTexts.join("\n\n").trim();
+      if (typeof (pdf as { cleanup?: () => void }).cleanup === "function") {
+        (pdf as { cleanup: () => void }).cleanup();
+      }
+      if (typeof (pdf as { destroy?: () => void }).destroy === "function") {
+        await (pdf as { destroy: () => Promise<void> }).destroy();
+      }
+    } finally {
+      if (typeof loadingTask.destroy === "function") {
+        await loadingTask.destroy();
+      }
     }
 
 
