@@ -1,12 +1,59 @@
 import { NextResponse } from "next/server";
 
-import * as pdfParse from "pdf-parse";
-
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
 
 
 export const runtime = "nodejs";
+
+
+
+function ensurePdfJsPolyfills() {
+  if (typeof (globalThis as any).DOMMatrix === "undefined") {
+    class DOMMatrixPolyfill {
+      multiply() {
+        return this;
+      }
+
+      multiplySelf() {
+        return this;
+      }
+
+      invertSelf() {
+        return this;
+      }
+    }
+
+    (globalThis as any).DOMMatrix = DOMMatrixPolyfill;
+  }
+
+  if (typeof (globalThis as any).Path2D === "undefined") {
+    (globalThis as any).Path2D = class {};
+  }
+
+  if (typeof (globalThis as any).ImageData === "undefined") {
+    (globalThis as any).ImageData = class {
+      data: Uint8ClampedArray;
+      height: number;
+      width: number;
+
+      constructor(width = 0, height = 0) {
+        this.width = width;
+        this.height = height;
+        this.data = new Uint8ClampedArray(width * height * 4);
+      }
+    };
+  }
+}
+
+ensurePdfJsPolyfills();
+
+async function ensurePdfJsWorker() {
+  if (!(globalThis as any).pdfjsWorker?.WorkerMessageHandler) {
+    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    (globalThis as any).pdfjsWorker = workerModule;
+  }
+}
 
 
 
@@ -31,6 +78,8 @@ function noStoreHeaders(extra: Record<string, string>) {
 export async function POST(req: Request) {
 
   try {
+    await ensurePdfJsWorker();
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
     const form = await req.formData();
 
@@ -50,9 +99,46 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const parsed = await (pdfParse as any)(buffer);
+    const loadingTask = pdfjs.getDocument({
+      data: buffer,
+      disableWorker: true,
+    });
 
-    const text = String(parsed?.text || "").trim();
+    let text = "";
+    try {
+      const pdf = await loadingTask.promise;
+      const pageTexts: string[] = [];
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+
+        let pageText = "";
+        for (const item of content.items as Array<{
+          str?: string;
+          hasEOL?: boolean;
+        }>) {
+          if (typeof item.str === "string") {
+            pageText += item.str;
+          }
+          pageText += item.hasEOL ? "\n" : " ";
+        }
+
+        pageTexts.push(pageText.trim());
+      }
+
+      text = pageTexts.join("\n\n").trim();
+      if (typeof (pdf as { cleanup?: () => void }).cleanup === "function") {
+        (pdf as { cleanup: () => void }).cleanup();
+      }
+      if (typeof (pdf as { destroy?: () => void }).destroy === "function") {
+        await (pdf as { destroy: () => Promise<void> }).destroy();
+      }
+    } finally {
+      if (typeof loadingTask.destroy === "function") {
+        await loadingTask.destroy();
+      }
+    }
 
 
 
