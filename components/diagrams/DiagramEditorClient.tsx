@@ -22,6 +22,8 @@ import { THEMES, type DiagramTheme } from "@/lib/diagrams/themes";
 import EditableBpmnNode from "@/components/diagrams/nodes/EditableBpmnNodes";
 import { validateConnection, type BpmnNodeData } from "@/lib/diagrams/bpmnRules";
 import { exportSimpleSvg } from "@/lib/diagrams/exportSvg";
+import { exportBpmnXml } from "@/lib/diagrams/exportBpmnXml";
+import SwimlaneNode, { type SwimlaneNodeData } from "@/components/diagrams/nodes/SwimlaneNode";
 
 function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -260,8 +262,57 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     [nodes, edges, setEdges, theme.accent]
   );
 
+  const addSwimlane = useCallback(
+    (orientation: "horizontal" | "vertical") => {
+      const labelsRaw = window.prompt(
+        "Enter swim lane names (comma-separated). Example: Sales, Finance, Ops"
+      );
+      if (!labelsRaw) return;
+      const lanes = labelsRaw
+        .split(",")
+        .map((label) => label.trim())
+        .filter(Boolean);
+      if (!lanes.length) {
+        alert("Please enter at least one swim lane name.");
+        return;
+      }
+
+      const laneCount = lanes.length;
+      const width = orientation === "horizontal" ? 960 : Math.max(240 * laneCount, 520);
+      const height = orientation === "horizontal" ? Math.max(160 * laneCount, 320) : 520;
+
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: `swimlane_${uid()}`,
+          type: "swimlane",
+          position: { x: 120, y: 120 },
+          data: {
+            kind: "swimlane",
+            label: "Swim Lanes",
+            orientation,
+            lanes,
+            width,
+            height,
+            theme,
+          } satisfies SwimlaneNodeData,
+        },
+      ]);
+    },
+    [setNodes, theme]
+  );
+
   const addFromPalette = useCallback(
     (item: BpmnPaletteItem) => {
+      if (item.type === "swimlane_horizontal") {
+        addSwimlane("horizontal");
+        return;
+      }
+      if (item.type === "swimlane_vertical") {
+        addSwimlane("vertical");
+        return;
+      }
+
       const id = uid();
       const centerX = 420;
       const centerY = 240;
@@ -285,7 +336,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
         },
       ]);
     },
-    [setNodes, theme]
+    [addSwimlane, setNodes, theme]
   );
 
   const deleteSelection = useCallback(() => {
@@ -318,11 +369,13 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [deleteSelection, selectedEdgeIds.length, selectedNodeIds.length]);
 
-  const updateSelectedNode = (patch: Partial<BpmnNodeData>) => {
+  const updateSelectedNode = (patch: Partial<BpmnNodeData | SwimlaneNodeData>) => {
     const id = selectedNodeIds[0];
     if (!id) return;
 
-    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...(n.data as any), ...patch } } : n)));
+    setNodes((nds) =>
+      nds.map((n) => (n.id === id ? { ...n, data: { ...(n.data as any), ...patch } } : n))
+    );
   };
 
   const updateSelectedMeta = (patch: Partial<NonNullable<BpmnNodeData["meta"]>>) => {
@@ -344,6 +397,28 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     const a = document.createElement("a");
     a.href = url;
     a.download = `${title.replace(/[^\w\-]+/g, "_") || "diagram"}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportBpmn = () => {
+    const xml = exportBpmnXml(nodes, edges, { title });
+    const blob = new Blob([xml], { type: "application/xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/[^\w\-]+/g, "_") || "diagram"}.bpmn`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportJson = () => {
+    const payload = JSON.stringify({ name: title, nodes, edges, meta: { themeId } }, null, 2);
+    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/[^\w\-]+/g, "_") || "diagram"}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -388,7 +463,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     [diagram.id, edges, nodes, themeId, title]
   );
 
-  const openChildAfterCreate: "new-tab" | "same-tab" = "new-tab";
+  const openChildAfterCreate: "new-tab" | "same-tab" = "same-tab";
 
   const openChild = useCallback(
     (childId: string) => {
@@ -458,7 +533,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
         setCreatingChildFor(null);
       }
     },
-    [diagram.id, nodes, edges, autosaveNow, openChild]
+    [diagram.id, nodes, edges, autosaveNow, openChild, setNodes]
   );
 
   // ✅ Node renderer callbacks must be wired here
@@ -490,11 +565,122 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
           }}
         />
       ),
+      swimlane: (rfProps: any) => <SwimlaneNode {...rfProps} />,
     }),
     [creatingChildFor, createChildForNode, openChild, setNodes]
   );
 
   const canvasStyle: React.CSSProperties = { background: theme.canvasBg };
+
+  const generateSwimlanes = useCallback(() => {
+    const orientation = window.prompt(
+      "Swim lane orientation (horizontal or vertical). Leave blank for horizontal."
+    );
+    if (orientation && orientation.toLowerCase().startsWith("v")) {
+      addSwimlane("vertical");
+      return;
+    }
+    addSwimlane("horizontal");
+  }, [addSwimlane]);
+
+  const generateProcess = useCallback(() => {
+    const raw = window.prompt(
+      "Enter process steps (one per line). Example:\nRequest\nReview\nApprove\nFulfill"
+    );
+    if (!raw) return;
+    const steps = raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!steps.length) {
+      alert("Please enter at least one step.");
+      return;
+    }
+
+    const baseX = 140;
+    const baseY = 180;
+    const spacingX = 220;
+    const flowNodes: Node[] = [];
+    const flowEdges: Edge[] = [];
+
+    const startId = `start_${uid()}`;
+    flowNodes.push({
+      id: startId,
+      type: "bpmn",
+      position: { x: baseX, y: baseY },
+      data: { kind: "start_event", label: "Start", theme, collapsed: false, meta: {} },
+    });
+
+    let prevId = startId;
+    steps.forEach((step, index) => {
+      const id = `task_${uid()}`;
+      flowNodes.push({
+        id,
+        type: "bpmn",
+        position: { x: baseX + spacingX * (index + 1), y: baseY },
+        data: { kind: "task", label: step, theme, collapsed: false, meta: {} },
+      });
+      flowEdges.push({
+        id: `edge_${uid()}`,
+        source: prevId,
+        target: id,
+        type: "smoothstep",
+        markerEnd: { type: MarkerType.ArrowClosed },
+        style: { strokeWidth: 2, stroke: theme.accent },
+      });
+      prevId = id;
+    });
+
+    const endId = `end_${uid()}`;
+    flowNodes.push({
+      id: endId,
+      type: "bpmn",
+      position: { x: baseX + spacingX * (steps.length + 1), y: baseY },
+      data: { kind: "end_event", label: "End", theme, collapsed: false, meta: {} },
+    });
+    flowEdges.push({
+      id: `edge_${uid()}`,
+      source: prevId,
+      target: endId,
+      type: "smoothstep",
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { strokeWidth: 2, stroke: theme.accent },
+    });
+
+    setNodes((nds) => [...nds, ...flowNodes]);
+    setEdges((eds) => [...eds, ...flowEdges]);
+  }, [setNodes, setEdges, theme]);
+
+  useEffect(() => {
+    setNodes((nds) => {
+      let changed = false;
+      const next = nds.map((node) => {
+        if (node.type !== "swimlane") return node;
+        const data = node.data as SwimlaneNodeData;
+        const padding = 80;
+        let maxX = data.width;
+        let maxY = data.height;
+        nds.forEach((candidate) => {
+          if (candidate.id === node.id || candidate.type === "swimlane") return;
+          const dx = candidate.position.x - node.position.x;
+          const dy = candidate.position.y - node.position.y;
+          if (dx >= 0 && dy >= 0) {
+            const width = (candidate.width as number) ?? 180;
+            const height = (candidate.height as number) ?? 120;
+            maxX = Math.max(maxX, dx + width + padding);
+            maxY = Math.max(maxY, dy + height + padding);
+          }
+        });
+        if (maxX === data.width && maxY === data.height) return node;
+        changed = true;
+        return {
+          ...node,
+          data: { ...data, width: maxX, height: maxY },
+        };
+      });
+      return changed ? next : nds;
+    });
+  }, [nodes, setNodes]);
 
   return (
     <div className="h-[calc(100vh-72px)] w-full">
@@ -530,6 +716,10 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
           onCollapseAll={collapseAll}
           onExpandAll={expandAll}
           onExportSvg={exportSvg}
+          onExportBpmn={exportBpmn}
+          onExportJson={exportJson}
+          onGenerateSwimlanes={generateSwimlanes}
+          onGenerateProcess={generateProcess}
         />
 
         <div className="flex-1 relative">
@@ -569,84 +759,158 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
               </div>
             ) : (
               <div className="mt-3 space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-700">Label</label>
-                  <input
-                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                    value={(selectedNode.data as any)?.label ?? ""}
-                    onChange={(e) => updateSelectedNode({ label: e.target.value } as any)}
-                  />
-                </div>
+                {selectedNode.type === "swimlane" ? (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Title</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        value={(selectedNode.data as any)?.label ?? ""}
+                        onChange={(e) => updateSelectedNode({ label: e.target.value } as any)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Lane Names</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        placeholder="e.g., Sales, Finance, Operations"
+                        value={((selectedNode.data as any)?.lanes ?? []).join(", ")}
+                        onChange={(e) =>
+                          updateSelectedNode({
+                            lanes: e.target.value
+                              .split(",")
+                              .map((lane) => lane.trim())
+                              .filter(Boolean),
+                          } as any)
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Width</label>
+                        <input
+                          type="number"
+                          className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                          value={(selectedNode.data as any)?.width ?? 0}
+                          onChange={(e) =>
+                            updateSelectedNode({
+                              width: Math.max(200, Number(e.target.value || 0)),
+                            } as any)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Height</label>
+                        <input
+                          type="number"
+                          className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                          value={(selectedNode.data as any)?.height ?? 0}
+                          onChange={(e) =>
+                            updateSelectedNode({
+                              height: Math.max(200, Number(e.target.value || 0)),
+                            } as any)
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Orientation</label>
+                      <select
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        value={(selectedNode.data as any)?.orientation ?? "horizontal"}
+                        onChange={(e) =>
+                          updateSelectedNode({
+                            orientation: e.target.value as "horizontal" | "vertical",
+                          } as any)
+                        }
+                      >
+                        <option value="horizontal">Horizontal</option>
+                        <option value="vertical">Vertical</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Label</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        value={(selectedNode.data as any)?.label ?? ""}
+                        onChange={(e) => updateSelectedNode({ label: e.target.value } as any)}
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">AHT (min)</label>
-                    <input
-                      type="number"
-                      className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                      value={(selectedNode.data as any)?.meta?.avgHandlingTimeMin ?? ""}
-                      onChange={(e) =>
-                        updateSelectedMeta({
-                          avgHandlingTimeMin: e.target.value ? Number(e.target.value) : null,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Cycle (min)</label>
-                    <input
-                      type="number"
-                      className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                      value={(selectedNode.data as any)?.meta?.avgCycleTimeMin ?? ""}
-                      onChange={(e) =>
-                        updateSelectedMeta({
-                          avgCycleTimeMin: e.target.value ? Number(e.target.value) : null,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">AHT (min)</label>
+                        <input
+                          type="number"
+                          className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                          value={(selectedNode.data as any)?.meta?.avgHandlingTimeMin ?? ""}
+                          onChange={(e) =>
+                            updateSelectedMeta({
+                              avgHandlingTimeMin: e.target.value ? Number(e.target.value) : null,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700">Cycle (min)</label>
+                        <input
+                          type="number"
+                          className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                          value={(selectedNode.data as any)?.meta?.avgCycleTimeMin ?? ""}
+                          onChange={(e) =>
+                            updateSelectedMeta({
+                              avgCycleTimeMin: e.target.value ? Number(e.target.value) : null,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="text-xs font-medium text-gray-700">Actors / Users</label>
-                  <input
-                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                    placeholder="e.g., Customer, Manufacturer"
-                    value={(selectedNode.data as any)?.meta?.actors ?? ""}
-                    onChange={(e) => updateSelectedMeta({ actors: e.target.value })}
-                  />
-                </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Actors / Users</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        placeholder="e.g., Customer, Manufacturer"
+                        value={(selectedNode.data as any)?.meta?.actors ?? ""}
+                        onChange={(e) => updateSelectedMeta({ actors: e.target.value })}
+                      />
+                    </div>
 
-                <div>
-                  <label className="text-xs font-medium text-gray-700">Applications</label>
-                  <input
-                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                    placeholder="e.g., SAP, ServiceNow"
-                    value={(selectedNode.data as any)?.meta?.applications ?? ""}
-                    onChange={(e) => updateSelectedMeta({ applications: e.target.value })}
-                  />
-                </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Applications</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        placeholder="e.g., SAP, ServiceNow"
+                        value={(selectedNode.data as any)?.meta?.applications ?? ""}
+                        onChange={(e) => updateSelectedMeta({ applications: e.target.value })}
+                      />
+                    </div>
 
-                <div>
-                  <label className="text-xs font-medium text-gray-700">Business Capability</label>
-                  <input
-                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                    placeholder="e.g., Order Management"
-                    value={(selectedNode.data as any)?.meta?.businessCapability ?? ""}
-                    onChange={(e) => updateSelectedMeta({ businessCapability: e.target.value })}
-                  />
-                </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Business Capability</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        placeholder="e.g., Order Management"
+                        value={(selectedNode.data as any)?.meta?.businessCapability ?? ""}
+                        onChange={(e) => updateSelectedMeta({ businessCapability: e.target.value })}
+                      />
+                    </div>
 
-                <div>
-                  <label className="text-xs font-medium text-gray-700">Risks & Controls</label>
-                  <textarea
-                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                    rows={3}
-                    placeholder="e.g., Risk: fraud; Control: 2-step approval"
-                    value={(selectedNode.data as any)?.meta?.risksAndControls ?? ""}
-                    onChange={(e) => updateSelectedMeta({ risksAndControls: e.target.value })}
-                  />
-                </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700">Risks & Controls</label>
+                      <textarea
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        rows={3}
+                        placeholder="e.g., Risk: fraud; Control: 2-step approval"
+                        value={(selectedNode.data as any)?.meta?.risksAndControls ?? ""}
+                        onChange={(e) => updateSelectedMeta({ risksAndControls: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
