@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -30,8 +30,7 @@
     "openai": "^6.15.0",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
-    "pdf-parse": "^2.4.5",
-    "pdfjs-dist": "^4.10.38",
+    "pdfjs-dist": "^5.4.296",
     "puppeteer": "^24.34.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -47,7 +46,6 @@
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.10.2",
     "@types/papaparse": "^5.5.0",
-    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "eslint": "^9.16.0",

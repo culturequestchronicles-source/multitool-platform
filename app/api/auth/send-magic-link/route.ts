@@ -3,6 +3,26 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
+function resolveOrigin(req: Request) {
+  const explicitOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicitOrigin) {
+    return explicitOrigin.replace(/\/$/, "");
+  }
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+  }
+
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return new URL(req.url).origin;
+}
+
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
@@ -18,7 +38,7 @@ export async function POST(req: Request) {
 
     // IMPORTANT: Always redirect to /auth/callback (server route)
     // and DO NOT rely on access_token hash flow.
-    const origin = new URL(req.url).origin;
+    const origin = resolveOrigin(req);
     const redirectTo = `${origin}/auth/callback`;
 
     const { error } = await supabase.auth.signInWithOtp({
