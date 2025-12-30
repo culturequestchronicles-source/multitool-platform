@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import NewDiagramButton from "./NewDiagramButton";
+import LogoutButton from "./LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +34,10 @@ export default async function DiagramsListPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Diagrams</h1>
 
-        {/* ✅ New modal that lets users choose 1 of 5 diagram types */}
-        <NewDiagramButton />
+        <div className="flex items-center gap-3">
+          <NewDiagramButton />
+          <LogoutButton />
+        </div>
       </div>
 
       {error && (
