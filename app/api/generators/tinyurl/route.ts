@@ -70,7 +70,8 @@ export async function POST(req: Request) {
     }
 
     // ✅ Uniqueness mechanism: same original_url returns same code
-    const existing = await supabaseServer
+    const supabase = supabaseServer();
+    const existing = await supabase
       .from("tiny_urls")
       .select("code, original_url")
       .eq("original_url", original_url)
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = makeCode();
 
-      const insert = await supabaseServer
+      const insert = await supabase
         .from("tiny_urls")
         .insert({ code, original_url })
         .select("code, original_url")

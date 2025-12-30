@@ -10,7 +10,9 @@ export type BpmnPaletteItem =
   | { type: "gateway_xor_split"; label: string }
   | { type: "gateway_xor_merge"; label: string }
   | { type: "intermediate_message"; label: string }
-  | { type: "intermediate_timer"; label: string };
+  | { type: "intermediate_timer"; label: string }
+  | { type: "swimlane_horizontal"; label: string }
+  | { type: "swimlane_vertical"; label: string };
 
 const ITEMS: BpmnPaletteItem[] = [
   { type: "start_event", label: "Start Event" },
@@ -30,6 +32,10 @@ export default function BpmnPalette({
   onCollapseAll,
   onExpandAll,
   onExportSvg,
+  onExportBpmn,
+  onExportJson,
+  onGenerateSwimlanes,
+  onGenerateProcess,
 }: {
   theme: DiagramTheme;
   setThemeId: (id: string) => void;
@@ -37,6 +43,10 @@ export default function BpmnPalette({
   onCollapseAll: () => void;
   onExpandAll: () => void;
   onExportSvg: () => void;
+  onExportBpmn: () => void;
+  onExportJson: () => void;
+  onGenerateSwimlanes: () => void;
+  onGenerateProcess: () => void;
 }) {
   return (
     <div className="w-[280px] shrink-0 border-r bg-white p-3">
@@ -52,6 +62,24 @@ export default function BpmnPalette({
             {it.label}
           </button>
         ))}
+      </div>
+
+      <div className="mt-4">
+        <div className="text-sm font-semibold">Swim Lanes</div>
+        <div className="mt-2 space-y-2">
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => onAdd({ type: "swimlane_horizontal", label: "Swim Lanes (Horizontal)" })}
+          >
+            Swim Lanes (Horizontal)
+          </button>
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => onAdd({ type: "swimlane_vertical", label: "Swim Lanes (Vertical)" })}
+          >
+            Swim Lanes (Vertical)
+          </button>
+        </div>
       </div>
 
       <div className="mt-4">
@@ -91,6 +119,39 @@ export default function BpmnPalette({
         >
           Export SVG
         </button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportBpmn}
+        >
+          Export BPMN
+        </button>
+        <button
+          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportJson}
+        >
+          Export JSON
+        </button>
+      </div>
+
+      <div className="mt-4 rounded-xl border bg-gray-50 p-3 text-xs text-gray-700">
+        <div className="font-semibold">AI Assist</div>
+        <div className="mt-2 grid gap-2">
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
+            onClick={onGenerateSwimlanes}
+          >
+            Generate Swim Lanes
+          </button>
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
+            onClick={onGenerateProcess}
+          >
+            Generate Full Process
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 rounded-xl border bg-gray-50 p-3 text-xs text-gray-700">

@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    "/app/api/pdf/pdf-to-word/route": [
+      "./node_modules/pdfjs-dist/**",
+    ],
+  },
   async headers() {
     return [
       {
