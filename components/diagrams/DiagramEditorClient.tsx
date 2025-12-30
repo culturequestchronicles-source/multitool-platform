@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -20,10 +20,24 @@ import "reactflow/dist/style.css";
 import BpmnPalette, { type BpmnPaletteItem } from "@/components/diagrams/BpmnPalette";
 import { THEMES, type DiagramTheme } from "@/lib/diagrams/themes";
 import EditableBpmnNode from "@/components/diagrams/nodes/EditableBpmnNodes";
+import SwimlaneNode from "@/components/diagrams/nodes/SwimlaneNode";
 import { validateConnection, type BpmnNodeData } from "@/lib/diagrams/bpmnRules";
 import { exportSimpleSvg } from "@/lib/diagrams/exportSvg";
 import { exportBpmnXml } from "@/lib/diagrams/exportBpmnXml";
 import SwimlaneNode, { type SwimlaneNodeData } from "@/components/diagrams/nodes/SwimlaneNode";
+
+import { computeVisibility } from "@/lib/diagrams/nesting";
+import { applyLayout, type LayoutMode } from "@/lib/diagrams/layout";
+import {
+  type LaneOrientation,
+  makeLaneNodes,
+  findLaneAtPoint,
+  snapNodeIntoLane,
+  stripNonSerializableFromEdges,
+  stripNonSerializableFromNodes,
+} from "@/lib/diagrams/swimlanes";
+
+import { DiagramEditorProvider } from "@/components/diagrams/DiagramEditorContext";
 
 function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -39,7 +53,7 @@ function sameIds(a: string[], b: string[]) {
 type Snap = {
   nodes: Node[];
   edges: Edge[];
-  meta?: { themeId?: string };
+  meta?: { themeId?: string; layoutMode?: LayoutMode };
 };
 
 function getFocusParam() {
@@ -101,11 +115,24 @@ function FocusHelper({
   return null;
 }
 
+// ✅ nodeTypes must be stable
+const NODE_TYPES = {
+  bpmn: EditableBpmnNode,
+  swimlane: SwimlaneNode,
+};
+
+function nodeRect(n: Node) {
+  const w = (n as any).width ?? 180;
+  const h = (n as any).height ?? 100;
+  const pos = (n as any).positionAbsolute ?? n.position ?? { x: 0, y: 0 };
+  return { x: pos.x, y: pos.y, w, h };
+}
+
 export default function DiagramEditorClient({ diagram }: { diagram: any }) {
   const [title, setTitle] = useState<string>(diagram?.name ?? "Untitled Diagram");
-
-  const [themeId, setThemeId] = useState<string>(
-    diagram?.current_snapshot?.meta?.themeId ?? "paper"
+  const [themeId, setThemeId] = useState<string>(diagram?.current_snapshot?.meta?.themeId ?? "paper");
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>(
+    diagram?.current_snapshot?.meta?.layoutMode ?? "free"
   );
 
   const theme: DiagramTheme = useMemo(
@@ -123,25 +150,13 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
           id: "start",
           type: "bpmn",
           position: { x: 140, y: 200 },
-          data: {
-            kind: "start_event",
-            label: "Start",
-            theme,
-            collapsed: false,
-            meta: {},
-          } satisfies BpmnNodeData & { theme: DiagramTheme },
+          data: { kind: "start_event", label: "Start", theme, collapsed: false, meta: {} },
         },
         {
           id: "end",
           type: "bpmn",
           position: { x: 560, y: 260 },
-          data: {
-            kind: "end_event",
-            label: "End",
-            theme,
-            collapsed: false,
-            meta: {},
-          } satisfies BpmnNodeData & { theme: DiagramTheme },
+          data: { kind: "end_event", label: "End", theme, collapsed: false, meta: {} },
         },
       ],
       edges: [
@@ -154,7 +169,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
           style: { strokeWidth: 2, stroke: theme.accent },
         },
       ],
-      meta: { themeId },
+      meta: { themeId, layoutMode: "free" },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -333,21 +348,24 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
 
   // ✅ focus from URL (?focus=NODE_ID)
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
-  useEffect(() => {
-    setFocusNodeId(getFocusParam());
-  }, []);
+  useEffect(() => setFocusNodeId(getFocusParam()), []);
 
-  // ✅ create child spinner state
   const [creatingChildFor, setCreatingChildFor] = useState<string | null>(null);
 
-  // Apply theme to all nodes/edges when theme changes
+  // AI Modal
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiWorking, setAiWorking] = useState(false);
+
+  // ✅ visibility via hidden flags
+  const { visibleNodes, visibleEdges } = useMemo(
+    () => computeVisibility(nodes, edges),
+    [nodes, edges]
+  );
+
+  // Apply theme to all nodes/edges when theme changes (safe)
   useEffect(() => {
-    setNodes((nds) =>
-      nds.map((n) => ({
-        ...n,
-        data: { ...(n.data ?? {}), theme },
-      }))
-    );
+    setNodes((nds) => nds.map((n) => ({ ...n, data: { ...(n.data ?? {}), theme } })));
     setEdges((eds) =>
       eds.map((e) => ({
         ...e,
@@ -357,6 +375,47 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     );
   }, [theme, setNodes, setEdges]);
 
+  // ---- refs for stable autosave + click actions ----
+  const nodesRef = useRef<Node[]>(nodes);
+  const edgesRef = useRef<Edge[]>(edges);
+  const titleRef = useRef(title);
+  const metaRef = useRef({ themeId, layoutMode });
+
+  useEffect(() => void (nodesRef.current = nodes), [nodes]);
+  useEffect(() => void (edgesRef.current = edges), [edges]);
+  useEffect(() => void (titleRef.current = title), [title]);
+  useEffect(() => void (metaRef.current = { themeId, layoutMode }), [themeId, layoutMode]);
+
+  const sanitizeSnap = useCallback((snap: Snap): Snap => {
+    return {
+      ...snap,
+      nodes: stripNonSerializableFromNodes(snap.nodes),
+      edges: stripNonSerializableFromEdges(snap.edges),
+    };
+  }, []);
+
+  const autosaveNow = useCallback(
+    async (overrideNodes?: Node[], overrideEdges?: Edge[]) => {
+      const snap: Snap = sanitizeSnap({
+        nodes: (overrideNodes ?? nodesRef.current) as any,
+        edges: (overrideEdges ?? edgesRef.current) as any,
+        meta: { ...metaRef.current },
+      });
+
+      await fetch(`/api/diagrams/${diagram.id}/autosave`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: titleRef.current, snapshot: snap }),
+      }).catch(() => {});
+    },
+    [diagram.id, sanitizeSnap]
+  );
+
+  useEffect(() => {
+    const t = setInterval(() => autosaveNow(), 6000);
+    return () => clearInterval(t);
+  }, [autosaveNow]);
+
   const onSelectionChange = useCallback((sel: { nodes?: any[]; edges?: any[] }) => {
     const nextNodeIds = (sel.nodes ?? []).map((n) => n.id).sort();
     const nextEdgeIds = (sel.edges ?? []).map((e) => e.id).sort();
@@ -364,37 +423,33 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     setSelectedEdgeIds((prev) => (sameIds(prev, nextEdgeIds) ? prev : nextEdgeIds));
   }, []);
 
-  const collapseAll = () => {
-    setNodes((nds) =>
-      nds.map((n) => {
-        const d = n.data as any;
-        if (d?.kind === "subprocess") return { ...n, data: { ...d, collapsed: true } };
-        return n;
-      })
-    );
-  };
-
-  const expandAll = () => {
-    setNodes((nds) =>
-      nds.map((n) => {
-        const d = n.data as any;
-        if (d?.kind === "subprocess") return { ...n, data: { ...d, collapsed: false } };
-        return n;
-      })
-    );
-  };
+  const runLayout = useCallback(
+    (mode: LayoutMode) => {
+      setLayoutMode(mode);
+      const laidOut = applyLayout(
+        visibleNodes.filter((n) => !n.hidden),
+        visibleEdges.filter((e) => !(e as any).hidden),
+        mode
+      );
+      const posById = new Map(laidOut.map((n) => [n.id, n.position]));
+      setNodes((nds) =>
+        nds.map((n) => (posById.has(n.id) ? { ...n, position: posById.get(n.id)! } : n))
+      );
+    },
+    [setNodes, visibleNodes, visibleEdges]
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      const src = nodes.find((n) => n.id === connection.source);
-      const tgt = nodes.find((n) => n.id === connection.target);
+      const src = nodesRef.current.find((n) => n.id === connection.source);
+      const tgt = nodesRef.current.find((n) => n.id === connection.target);
       if (!src || !tgt) return;
 
       const sourceKind = (src.data as any)?.kind as string | undefined;
       const targetKind = (tgt.data as any)?.kind as string | undefined;
 
-      const sourceOutgoingCount = edges.filter((e) => e.source === src.id).length;
-      const targetIncomingCount = edges.filter((e) => e.target === tgt.id).length;
+      const sourceOutgoingCount = edgesRef.current.filter((e) => e.source === src.id).length;
+      const targetIncomingCount = edgesRef.current.filter((e) => e.target === tgt.id).length;
 
       const verdict = validateConnection({
         sourceKind: sourceKind as any,
@@ -420,7 +475,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
         )
       );
     },
-    [nodes, edges, setEdges, theme.accent]
+    [setEdges, theme.accent]
   );
 
   const addSwimlane = useCallback(
@@ -492,7 +547,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
             label: item.label,
             theme,
             collapsed: false,
-            meta: {},
+            meta: { actors: "" }, // ✅ actors stay metadata
           } satisfies BpmnNodeData & { theme: DiagramTheme },
         },
       ]);
@@ -506,9 +561,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     setEdges((eds) => eds.filter((e) => !selectedEdgeIds.includes(e.id)));
     setNodes((nds) => nds.filter((n) => !selectedNodeIds.includes(n.id)));
     setEdges((eds) =>
-      eds.filter(
-        (e) => !selectedNodeIds.includes(e.source) && !selectedNodeIds.includes(e.target)
-      )
+      eds.filter((e) => !selectedNodeIds.includes(e.source) && !selectedNodeIds.includes(e.target))
     );
 
     setSelectedNodeIds([]);
@@ -549,10 +602,15 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
         return { ...n, data: { ...d, meta: { ...(d.meta ?? {}), ...patch } } };
       })
     );
+    setTimeout(() => autosaveNow(), 40);
   };
 
   const exportSvg = () => {
-    const svg = exportSimpleSvg(nodes, edges, { title });
+    const svg = exportSimpleSvg(
+      visibleNodes.filter((n) => !n.hidden),
+      visibleEdges.filter((e) => !(e as any).hidden),
+      { title }
+    );
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -585,16 +643,10 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
   };
 
   const saveVersion = useCallback(async () => {
-    const snap: Snap = { nodes, edges, meta: { themeId } };
-    await fetch(`/api/diagrams/${diagram.id}/autosave`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: title, snapshot: snap }),
-    });
-
+    await autosaveNow(nodesRef.current, edgesRef.current);
     const res = await fetch(`/api/diagrams/${diagram.id}/save-version`, { method: "POST" });
     if (res.redirected) window.location.href = res.url;
-  }, [nodes, edges, themeId, diagram.id, title]);
+  }, [autosaveNow, diagram.id]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -632,12 +684,10 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     []
   );
 
-  // ✅ The real fix: this function is what the node button calls
   const createChildForNode = useCallback(
     async (nodeId: string) => {
       if (!nodeId) return;
-
-      // prevent double clicks
+      if (creatingChildFor) return;
       setCreatingChildFor(nodeId);
 
       try {
@@ -647,19 +697,9 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
           body: JSON.stringify({ subprocessNodeId: nodeId }),
         });
 
-        // robust parse (sometimes server returns HTML on 404)
-        const contentType = res.headers.get("content-type") || "";
-        const payload: any =
-          contentType.includes("application/json")
-            ? await res.json().catch(() => ({}))
-            : await res.text().catch(() => "");
-
+        const payload = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const msg =
-            typeof payload === "string"
-              ? `Request failed (${res.status}). Route may be missing.`
-              : payload?.error ?? `Request failed (${res.status})`;
-          alert(msg);
+          alert(payload?.error ?? `Request failed (${res.status})`);
           return;
         }
 
@@ -669,18 +709,12 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
           return;
         }
 
-        // patch node in local state
-        const nextNodes = nodes.map((n) =>
+        const nextNodes = nodesRef.current.map((n) =>
           n.id === nodeId ? { ...n, data: { ...(n.data as any), childDiagramId } } : n
         );
+
         setNodes(nextNodes);
-
-        // persist quickly
-        setTimeout(() => {
-          autosaveNow(nextNodes, edges);
-        }, 50);
-
-        // open child
+        setTimeout(() => autosaveNow(nextNodes, edgesRef.current), 60);
         openChild(childDiagramId);
       } catch (e: any) {
         alert(e?.message ?? "Failed to create child (network error)");
@@ -691,8 +725,264 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     [diagram.id, nodes, edges, autosaveNow, openChild, setNodes]
   );
 
-  // ✅ Node renderer callbacks must be wired here
-  const nodeTypes = useMemo(
+  // ---- Swimlanes ----
+  const upsertSwimlanes = useCallback(
+    (orientation: LaneOrientation) => {
+      const nonLanes = nodesRef.current.filter((n) => (n.data as any)?.kind !== "swimlane");
+      const lanes = makeLaneNodes({ orientation }).map((l) => ({
+        ...l,
+        data: { ...(l.data as any), theme },
+      }));
+      const next = [...lanes, ...nonLanes];
+      setNodes(next);
+      setTimeout(() => autosaveNow(next, edgesRef.current), 80);
+    },
+    [autosaveNow, setNodes, theme]
+  );
+
+  const aiGenerateSwimlanes = useCallback(() => {
+    const laneSet = new Set<string>();
+    for (const n of nodesRef.current) {
+      const d: any = n.data ?? {};
+      if (d?.kind === "swimlane") continue;
+
+      const actors = String(d?.meta?.actors ?? "").trim();
+      if (!actors) continue;
+
+      actors
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean)
+        .forEach((a: string) => laneSet.add(a));
+    }
+
+    const labels = Array.from(laneSet).slice(0, 12);
+    const laneNodes = makeLaneNodes({
+      orientation: "horizontal",
+      labels: labels.length ? labels : undefined,
+    }).map((l) => ({ ...l, data: { ...(l.data as any), theme } }));
+
+    const nonLanes = nodesRef.current.filter((n) => (n.data as any)?.kind !== "swimlane");
+
+    // assign nodes to lanes by first matching actor name
+    const laneIdByName = new Map<string, string>();
+    for (const ln of laneNodes) laneIdByName.set((ln.data as any).label, ln.id);
+
+    const nextNonLanes = nonLanes.map((n) => {
+      const d: any = n.data ?? {};
+      const actors = String(d?.meta?.actors ?? "").trim();
+      if (!actors) return n;
+
+      const first = actors.split(",").map((s) => s.trim()).find(Boolean);
+      if (!first) return n;
+
+      const laneId = laneIdByName.get(first);
+      if (!laneId) return n;
+
+      return { ...n, data: { ...d, meta: { ...(d.meta ?? {}), laneId }, laneId } };
+    });
+
+    const combined = [...laneNodes, ...nextNonLanes];
+
+    // snap nodes into lanes
+    const snapped = combined.map((n) => {
+      if ((n.data as any)?.kind === "swimlane") return n;
+      const laneId = (n.data as any)?.laneId ?? (n.data as any)?.meta?.laneId;
+      if (!laneId) return n;
+      const lane = combined.find((x) => x.id === laneId);
+      if (!lane) return n;
+      const s = snapNodeIntoLane({ dragged: n, lane });
+      return { ...n, position: { x: s.x, y: s.y } };
+    });
+
+    setNodes(snapped);
+    setTimeout(() => autosaveNow(snapped, edgesRef.current), 90);
+  }, [autosaveNow, setNodes, theme]);
+
+  const renameLane = useCallback(
+    (laneId: string, name: string) => {
+      setNodes((nds) =>
+        nds.map((n) => (n.id === laneId ? { ...n, data: { ...(n.data as any), label: name } } : n))
+      );
+      setTimeout(() => autosaveNow(), 40);
+    },
+    [autosaveNow, setNodes]
+  );
+
+  const setLaneDividers = useCallback(
+    (laneId: string, dividers: number) => {
+      setNodes((nds) =>
+        nds.map((n) => (n.id === laneId ? { ...n, data: { ...(n.data as any), dividers } } : n))
+      );
+      setTimeout(() => autosaveNow(), 40);
+    },
+    [autosaveNow, setNodes]
+  );
+
+  const toggleLaneLock = useCallback(
+    (laneId: string) => {
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id !== laneId) return n;
+          const locked = !(n.data as any)?.locked;
+          return { ...n, draggable: !locked, data: { ...(n.data as any), locked } };
+        })
+      );
+      setTimeout(() => autosaveNow(), 40);
+    },
+    [autosaveNow, setNodes]
+  );
+
+  // snap-to-lane placement
+  const onNodeDragStop = useCallback(
+    (_evt: any, dragged: Node) => {
+      if (!dragged?.id) return;
+      if ((dragged.data as any)?.kind === "swimlane") return;
+
+      const dRect = nodeRect(dragged);
+      const cx = dRect.x + dRect.w / 2;
+      const cy = dRect.y + dRect.h / 2;
+
+      const lane = findLaneAtPoint(nodesRef.current, cx, cy);
+      if (!lane) return;
+
+      const snapped = snapNodeIntoLane({ dragged, lane });
+
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id !== dragged.id) return n;
+          const d: any = n.data ?? {};
+          return {
+            ...n,
+            position: { x: snapped.x, y: snapped.y },
+            data: { ...d, meta: { ...(d.meta ?? {}), laneId: snapped.laneId }, laneId: snapped.laneId },
+          };
+        })
+      );
+
+      setTimeout(() => autosaveNow(), 60);
+    },
+    [autosaveNow, setNodes]
+  );
+
+  // AI Full Process modal
+  const openAiFullProcessModal = useCallback(() => {
+    setAiPrompt(
+      "Create a pizza order process with handoffs across Service, Prep, Oven, Delivery. Include start, tasks, decisions, and end."
+    );
+    setAiOpen(true);
+  }, []);
+
+  const runAiFullProcess = useCallback(async () => {
+    const p = aiPrompt.trim();
+    if (!p) return;
+    setAiWorking(true);
+
+    try {
+      const res = await fetch(`/api/diagrams/${diagram.id}/ai/generate-process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: p }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(payload?.error ?? `AI request failed (${res.status})`);
+        return;
+      }
+
+      const { lanes, nodes: genNodes, edges: genEdges, orientation } = payload ?? {};
+      if (!Array.isArray(lanes) || !Array.isArray(genNodes) || !Array.isArray(genEdges)) {
+        alert("AI returned an unexpected response.");
+        return;
+      }
+
+      const laneNodes = makeLaneNodes({
+        orientation: orientation === "vertical" ? "vertical" : "horizontal",
+        labels: lanes,
+      }).map((l) => ({ ...l, data: { ...(l.data as any), theme } }));
+
+      const laneIdByName = new Map<string, string>();
+      for (const ln of laneNodes) laneIdByName.set((ln.data as any).label, ln.id);
+
+      const rebuiltNodes: Node[] = [
+        ...laneNodes,
+        ...genNodes.map((n: any, idx: number) => {
+          const id = n.id ?? `ai_${idx}_${uid()}`;
+          const laneName = String(n.lane ?? "").trim();
+          const laneId = laneIdByName.get(laneName) ?? null;
+
+          return {
+            id,
+            type: "bpmn",
+            position: { x: Number(n.x ?? 220), y: Number(n.y ?? 200) },
+            data: {
+              kind: n.kind ?? "task",
+              label: n.label ?? "Task",
+              theme,
+              collapsed: false,
+              meta: { ...(n.meta ?? {}), laneId, actors: n?.meta?.actors ?? "" },
+              laneId,
+            },
+          };
+        }),
+      ];
+
+      const rebuiltEdges: Edge[] = genEdges.map((e: any, idx: number) => ({
+        id: e.id ?? `ai_e_${idx}_${uid()}`,
+        source: e.source,
+        target: e.target,
+        type: "smoothstep",
+        markerEnd: { type: MarkerType.ArrowClosed },
+        style: { strokeWidth: 2, stroke: theme.accent },
+      }));
+
+      // snap nodes into lanes
+      const snappedNodes = rebuiltNodes.map((n) => {
+        if ((n.data as any)?.kind === "swimlane") return n;
+        const laneId = (n.data as any)?.laneId ?? (n.data as any)?.meta?.laneId;
+        if (!laneId) return n;
+        const lane = rebuiltNodes.find((x) => x.id === laneId);
+        if (!lane) return n;
+        const s = snapNodeIntoLane({ dragged: n, lane });
+        return { ...n, position: { x: s.x, y: s.y } };
+      });
+
+      setNodes(snappedNodes);
+      setEdges(rebuiltEdges);
+      setAiOpen(false);
+      setTimeout(() => autosaveNow(snappedNodes, rebuiltEdges), 120);
+    } catch (e: any) {
+      alert(e?.message ?? "AI request failed");
+    } finally {
+      setAiWorking(false);
+    }
+  }, [aiPrompt, autosaveNow, diagram.id, setEdges, setNodes, theme, theme.accent]);
+
+  // actions used by node components via context
+  const renameNode = useCallback(
+    (nodeId: string, label: string) => {
+      setNodes((nds) =>
+        nds.map((n) => (n.id === nodeId ? { ...n, data: { ...(n.data as any), label } } : n))
+      );
+      setTimeout(() => autosaveNow(), 40);
+    },
+    [autosaveNow, setNodes]
+  );
+
+  const toggleCollapsed = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...(n.data as any), collapsed: !(n.data as any)?.collapsed } } : n
+        )
+      );
+      setTimeout(() => autosaveNow(), 40);
+    },
+    [autosaveNow, setNodes]
+  );
+
+  const editorCtxValue = useMemo(
     () => ({
       bpmn: (rfProps: any) => (
         <EditableBpmnNode
@@ -722,7 +1012,20 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
       ),
       swimlane: (rfProps: any) => <SwimlaneNode {...rfProps} />,
     }),
-    [creatingChildFor, createChildForNode, openChild, setNodes]
+    [
+      theme,
+      creatingChildFor,
+      createChildForNode,
+      openChild,
+      renameNode,
+      toggleCollapsed,
+      upsertSwimlanes,
+      aiGenerateSwimlanes,
+      renameLane,
+      setLaneDividers,
+      toggleLaneLock,
+      openAiFullProcessModal,
+    ]
   );
 
   const canvasStyle: React.CSSProperties = { background: theme.canvasBg };
@@ -911,6 +1214,6 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
           </div>
         </div>
       </div>
-    </div>
+    </DiagramEditorProvider>
   );
 }
