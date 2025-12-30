@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
 import { THEMES, type DiagramTheme } from "@/lib/diagrams/themes";
 import type { BpmnNodeData } from "@/lib/diagrams/bpmnRules";
+import { useDiagramEditor } from "@/components/diagrams/DiagramEditorContext";
 
 function shapeFor(kind: BpmnNodeData["kind"]) {
   if (kind.includes("gateway")) return "diamond";
@@ -12,18 +13,14 @@ function shapeFor(kind: BpmnNodeData["kind"]) {
   return "rect";
 }
 
-type Props = NodeProps<BpmnNodeData & { theme?: DiagramTheme }> & {
-  onRename?: (nodeId: string, label: string) => void;
-  onToggleCollapsed?: (nodeId: string) => void;
+export default function EditableBpmnNode(props: NodeProps<BpmnNodeData & { theme?: DiagramTheme }>) {
+  const editor = useDiagramEditor();
 
-  onCreateChild?: (nodeId: string) => void;
-  onOpenChild?: (childDiagramId: string) => void;
-  creatingChildFor?: string | null;
-};
-
-export default function EditableBpmnNode(props: Props) {
   const theme: DiagramTheme =
-    (props.data as any)?.theme ?? THEMES.find((t) => t.id === "paper") ?? THEMES[0];
+    (props.data as any)?.theme ??
+    editor.theme ??
+    THEMES.find((t) => t.id === "paper") ??
+    THEMES[0];
 
   const kind = props.data.kind;
   const isSubprocess = kind === "subprocess";
@@ -89,15 +86,16 @@ export default function EditableBpmnNode(props: Props) {
     const trimmed = draft.trim();
     const next = trimmed.length ? trimmed : props.data.label ?? "";
     setEditing(false);
-    props.onRename?.(props.id, next);
+    editor.renameNode(props.id, next);
   };
 
   const childDiagramId = (props.data as any)?.childDiagramId as string | null | undefined;
-  const isCreating = props.creatingChildFor === props.id;
+  const isCreating = editor.creatingChildFor === props.id;
 
-  const stopAll = (e: any) => {
+  // IMPORTANT: stop RF pointer capture so clicks work
+  const stopRFPointer = (e: any) => {
+    e.preventDefault();
     e.stopPropagation();
-    e.preventDefault?.();
   };
 
   return (
@@ -123,7 +121,6 @@ export default function EditableBpmnNode(props: Props) {
           <div style={{ fontSize: 18, fontWeight: 800 }}>{props.data.label ?? ""}</div>
         ) : (
           <input
-            className="nodrag nopan"
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -183,14 +180,15 @@ export default function EditableBpmnNode(props: Props) {
 
       {canHaveOutgoing && <Handle type="source" position={Position.Bottom} />}
 
+      {/* Collapse toggle for subprocess */}
       {isSubprocess && (
         <button
-          className="nodrag nopan"
-          onPointerDown={stopAll}
-          onMouseDown={stopAll}
+          type="button"
+          onPointerDownCapture={stopRFPointer}
+          onMouseDownCapture={stopRFPointer}
           onClick={(e) => {
-            stopAll(e);
-            props.onToggleCollapsed?.(props.id);
+            stopRFPointer(e);
+            editor.toggleCollapsed(props.id);
           }}
           style={{
             position: "absolute",
@@ -198,12 +196,11 @@ export default function EditableBpmnNode(props: Props) {
             right: 8,
             borderRadius: 999,
             border: `1px solid ${theme.nodeBorder}`,
-            padding: "4px 8px",
-            fontSize: 11,
+            padding: "4px 10px",
+            fontSize: 12,
             background: theme.nodeBg,
             color: theme.text,
             cursor: "pointer",
-            zIndex: 50,
           }}
           title="Collapse/Expand"
         >
@@ -211,32 +208,30 @@ export default function EditableBpmnNode(props: Props) {
         </button>
       )}
 
-      {/* ✅ Create/Open child directly on node */}
+      {/* Create/Open child directly on node */}
       {isSubprocess && (
         <div
-          className="nodrag nopan"
           style={{
             position: "absolute",
-            left: 10,
+            left: 12,
             bottom: 10,
             display: "flex",
             gap: 8,
-            zIndex: 50,
             pointerEvents: "all",
           }}
-          onPointerDown={stopAll}
-          onMouseDown={stopAll}
-          onClick={stopAll}
+          onPointerDownCapture={stopRFPointer}
+          onMouseDownCapture={stopRFPointer}
+          onClickCapture={(e) => e.stopPropagation()}
         >
           {!childDiagramId ? (
             <button
-              className="nodrag nopan"
+              type="button"
               disabled={isCreating}
-              onPointerDown={stopAll}
-              onMouseDown={stopAll}
+              onPointerDownCapture={stopRFPointer}
+              onMouseDownCapture={stopRFPointer}
               onClick={(e) => {
-                stopAll(e);
-                props.onCreateChild?.(props.id);
+                stopRFPointer(e);
+                editor.createChildForNode(props.id);
               }}
               style={{
                 borderRadius: 999,
@@ -245,7 +240,7 @@ export default function EditableBpmnNode(props: Props) {
                 fontSize: 12,
                 background: "#000000",
                 color: "#ffffff",
-                opacity: isCreating ? 0.7 : 1,
+                opacity: isCreating ? 0.75 : 1,
                 cursor: isCreating ? "not-allowed" : "pointer",
               }}
               title="Create a child diagram for this subprocess"
@@ -254,12 +249,12 @@ export default function EditableBpmnNode(props: Props) {
             </button>
           ) : (
             <button
-              className="nodrag nopan"
-              onPointerDown={stopAll}
-              onMouseDown={stopAll}
+              type="button"
+              onPointerDownCapture={stopRFPointer}
+              onMouseDownCapture={stopRFPointer}
               onClick={(e) => {
-                stopAll(e);
-                props.onOpenChild?.(childDiagramId);
+                stopRFPointer(e);
+                editor.openChild(childDiagramId);
               }}
               style={{
                 borderRadius: 999,
