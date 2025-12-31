@@ -23,6 +23,9 @@ import EditableBpmnNode from "@/components/diagrams/nodes/EditableBpmnNodes";
 import SwimlaneNode from "@/components/diagrams/nodes/SwimlaneNode";
 import { validateConnection, type BpmnNodeData } from "@/lib/diagrams/bpmnRules";
 import { exportSimpleSvg } from "@/lib/diagrams/exportSvg";
+import { exportBpmnXml } from "@/lib/diagrams/exportBpmnXml";
+import SwimlaneNode, { type SwimlaneNodeData } from "@/components/diagrams/nodes/SwimlaneNode";
+import { saveAs } from "file-saver";
 
 import { computeVisibility } from "@/lib/diagrams/nesting";
 import { applyLayout, type LayoutMode } from "@/lib/diagrams/layout";
@@ -314,8 +317,60 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     [setEdges, theme.accent]
   );
 
+  const addSwimlane = useCallback(
+    (orientation: "horizontal" | "vertical", lanesInput?: string[]) => {
+      let lanes = lanesInput?.filter(Boolean).map((lane) => lane.trim()) ?? [];
+      if (!lanes.length) {
+        const labelsRaw = window.prompt(
+          "Enter swim lane names (comma-separated). Example: Actors, Systems, Departments"
+        );
+        if (!labelsRaw) return;
+        lanes = labelsRaw
+          .split(",")
+          .map((label) => label.trim())
+          .filter(Boolean);
+      }
+      if (!lanes.length) {
+        alert("Please enter at least one swim lane name.");
+        return;
+      }
+
+      const laneCount = lanes.length;
+      const width = orientation === "horizontal" ? 960 : Math.max(240 * laneCount, 520);
+      const height = orientation === "horizontal" ? Math.max(160 * laneCount, 320) : 520;
+
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: `swimlane_${uid()}`,
+          type: "swimlane",
+          position: { x: 120, y: 120 },
+          data: {
+            kind: "swimlane",
+            label: "Swim Lanes",
+            orientation,
+            lanes,
+            width,
+            height,
+            theme,
+          } satisfies SwimlaneNodeData,
+        },
+      ]);
+    },
+    [setNodes, theme]
+  );
+
   const addFromPalette = useCallback(
     (item: BpmnPaletteItem) => {
+      if (item.type === "swimlane_horizontal") {
+        addSwimlane("horizontal");
+        return;
+      }
+      if (item.type === "swimlane_vertical") {
+        addSwimlane("vertical");
+        return;
+      }
+
       const id = uid();
       const centerX = 420;
       const centerY = 240;
@@ -339,7 +394,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
         },
       ]);
     },
-    [setNodes, theme]
+    [addSwimlane, setNodes, theme]
   );
 
   const deleteSelection = useCallback(() => {
@@ -370,7 +425,7 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [deleteSelection, selectedEdgeIds.length, selectedNodeIds.length]);
 
-  const updateSelectedNode = (patch: Partial<BpmnNodeData>) => {
+  const updateSelectedNode = (patch: Partial<BpmnNodeData | SwimlaneNodeData>) => {
     const id = selectedNodeIds[0];
     if (!id) return;
     setNodes((nds) =>
@@ -392,6 +447,11 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
     setTimeout(() => autosaveNow(), 40);
   };
 
+  const fileBaseName = useMemo(
+    () => title.replace(/[^\w\-]+/g, "_") || "diagram",
+    [title]
+  );
+
   const exportSvg = () => {
     const svg = exportSimpleSvg(
       visibleNodes.filter((n) => !n.hidden),
@@ -399,13 +459,163 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
       { title }
     );
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title.replace(/[^\w\-]+/g, "_") || "diagram"}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+    saveAs(blob, `${fileBaseName}.svg`);
   };
+
+  const exportVisio = () => {
+    const svg = exportSimpleSvg(nodes, edges, { title });
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    saveAs(blob, `${fileBaseName}-visio.svg`);
+  };
+
+  const exportBpmn = () => {
+    const xml = exportBpmnXml(nodes, edges, { title });
+    const blob = new Blob([xml], { type: "application/xml;charset=utf-8" });
+    saveAs(blob, `${fileBaseName}.bpmn`);
+  };
+
+  const exportJson = () => {
+    const payload = JSON.stringify({ name: title, nodes, edges, meta: { themeId } }, null, 2);
+    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+    saveAs(blob, `${fileBaseName}.json`);
+  };
+
+  const exportPptx = useCallback(async () => {
+    const { default: JSZip } = await import("jszip");
+
+    const escapeXml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+
+    const labels = nodes
+      .filter((node) => node.type === "bpmn")
+      .map((node) => ({
+        label: (node.data as any)?.label ?? node.id,
+        x: node.position.x ?? 0,
+        y: node.position.y ?? 0,
+      }))
+      .sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y))
+      .map((item, index) => `${index + 1}. ${item.label}`);
+
+    const titleText = escapeXml(title || "Diagram Export");
+    const bodyLines = labels.length ? labels : ["No BPMN steps available."];
+    const bodyParagraphs = bodyLines
+      .map(
+        (line) => `
+          <a:p>
+            <a:r>
+              <a:rPr sz="2400" lang="en-US"/>
+              <a:t>${escapeXml(line)}</a:t>
+            </a:r>
+          </a:p>`
+      )
+      .join("");
+
+    const zip = new JSZip();
+    zip.file(
+      "[Content_Types].xml",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+</Types>`
+    );
+
+    zip.file(
+      "_rels/.rels",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`
+    );
+
+    zip.file(
+      "ppt/presentation.xml",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:sldIdLst>
+    <p:sldId id="256" r:id="rId1"/>
+  </p:sldIdLst>
+  <p:sldSz cx="12192000" cy="6858000" type="screen16x9"/>
+  <p:notesSz cx="6858000" cy="9144000"/>
+</p:presentation>`
+    );
+
+    zip.file(
+      "ppt/_rels/presentation.xml.rels",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+</Relationships>`
+    );
+
+    zip.file(
+      "ppt/slides/slide1.xml",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Title"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:rPr sz="3600" lang="en-US"/>
+              <a:t>${titleText}</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Body"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          ${bodyParagraphs}
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>`
+    );
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    saveAs(blob, `${fileBaseName}.pptx`);
+  }, [fileBaseName, nodes, title]);
 
   const saveVersion = useCallback(async () => {
     await autosaveNow(nodesRef.current, edgesRef.current);
@@ -747,6 +957,216 @@ export default function DiagramEditorClient({ diagram }: { diagram: any }) {
   );
 
   const canvasStyle: React.CSSProperties = { background: theme.canvasBg };
+
+  const requestAiList = useCallback(async (prompt: string): Promise<string[]> => {
+    const res = await fetch("/api/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.error ?? "AI request failed.");
+    }
+    const text = (data?.text ?? "").toString();
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) {
+      throw new Error("AI response did not include a JSON list.");
+    }
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) {
+      throw new Error("AI response is not a list.");
+    }
+    return parsed.map((item) => String(item)).filter(Boolean);
+  }, []);
+
+  const generateSwimlanes = useCallback(() => {
+    const scenario = window.prompt(
+      "Describe the process and the actors/systems involved. Example: Customer order fulfillment."
+    );
+    if (!scenario) return;
+    const orientation =
+      window.prompt("Orientation (horizontal or vertical). Leave blank for horizontal.") || "";
+    const isVertical = orientation.toLowerCase().startsWith("v");
+    requestAiList(
+      `Return ONLY a JSON array of swimlane names (actors, systems, or departments) for this process: ${scenario}`
+    )
+      .then((lanes) => {
+        addSwimlane(isVertical ? "vertical" : "horizontal", lanes);
+      })
+      .catch((err) => {
+        alert(err?.message ?? "AI generation failed. You can enter lanes manually.");
+        addSwimlane(isVertical ? "vertical" : "horizontal");
+      });
+  }, [addSwimlane, requestAiList]);
+
+  const generateProcess = useCallback(() => {
+    const scenario = window.prompt(
+      "Describe the process you want to generate. Example: Purchase approval flow."
+    );
+    if (!scenario) return;
+    requestAiList(
+      `Return ONLY a JSON array of BPMN task labels for this process, in order: ${scenario}`
+    )
+      .then((steps) => {
+        if (!steps.length) {
+          alert("AI did not return any steps. Try again.");
+          return;
+        }
+
+    const baseX = 140;
+    const baseY = 180;
+    const spacingX = 220;
+    const flowNodes: Node[] = [];
+    const flowEdges: Edge[] = [];
+
+    const startId = `start_${uid()}`;
+    flowNodes.push({
+      id: startId,
+      type: "bpmn",
+      position: { x: baseX, y: baseY },
+      data: { kind: "start_event", label: "Start", theme, collapsed: false, meta: {} },
+    });
+
+    let prevId = startId;
+    steps.forEach((step, index) => {
+      const id = `task_${uid()}`;
+      flowNodes.push({
+        id,
+        type: "bpmn",
+        position: { x: baseX + spacingX * (index + 1), y: baseY },
+        data: { kind: "task", label: step, theme, collapsed: false, meta: {} },
+      });
+      flowEdges.push({
+        id: `edge_${uid()}`,
+        source: prevId,
+        target: id,
+        type: "smoothstep",
+        markerEnd: { type: MarkerType.ArrowClosed },
+        style: { strokeWidth: 2, stroke: theme.accent },
+      });
+      prevId = id;
+    });
+
+    const endId = `end_${uid()}`;
+    flowNodes.push({
+      id: endId,
+      type: "bpmn",
+      position: { x: baseX + spacingX * (steps.length + 1), y: baseY },
+      data: { kind: "end_event", label: "End", theme, collapsed: false, meta: {} },
+    });
+    flowEdges.push({
+      id: `edge_${uid()}`,
+      source: prevId,
+      target: endId,
+      type: "smoothstep",
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { strokeWidth: 2, stroke: theme.accent },
+    });
+
+    setNodes((nds) => [...nds, ...flowNodes]);
+    setEdges((eds) => [...eds, ...flowEdges]);
+      })
+      .catch((err) => {
+        alert(err?.message ?? "AI generation failed. You can enter steps manually.");
+        const raw = window.prompt(
+          "Enter process steps (one per line). Example:\nRequest\nReview\nApprove\nFulfill"
+        );
+        if (!raw) return;
+        const steps = raw
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (!steps.length) {
+          alert("Please enter at least one step.");
+          return;
+        }
+
+        const baseX = 140;
+        const baseY = 180;
+        const spacingX = 220;
+        const flowNodes: Node[] = [];
+        const flowEdges: Edge[] = [];
+
+        const startId = `start_${uid()}`;
+        flowNodes.push({
+          id: startId,
+          type: "bpmn",
+          position: { x: baseX, y: baseY },
+          data: { kind: "start_event", label: "Start", theme, collapsed: false, meta: {} },
+        });
+
+        let prevId = startId;
+        steps.forEach((step, index) => {
+          const id = `task_${uid()}`;
+          flowNodes.push({
+            id,
+            type: "bpmn",
+            position: { x: baseX + spacingX * (index + 1), y: baseY },
+            data: { kind: "task", label: step, theme, collapsed: false, meta: {} },
+          });
+          flowEdges.push({
+            id: `edge_${uid()}`,
+            source: prevId,
+            target: id,
+            type: "smoothstep",
+            markerEnd: { type: MarkerType.ArrowClosed },
+            style: { strokeWidth: 2, stroke: theme.accent },
+          });
+          prevId = id;
+        });
+
+        const endId = `end_${uid()}`;
+        flowNodes.push({
+          id: endId,
+          type: "bpmn",
+          position: { x: baseX + spacingX * (steps.length + 1), y: baseY },
+          data: { kind: "end_event", label: "End", theme, collapsed: false, meta: {} },
+        });
+        flowEdges.push({
+          id: `edge_${uid()}`,
+          source: prevId,
+          target: endId,
+          type: "smoothstep",
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { strokeWidth: 2, stroke: theme.accent },
+        });
+
+        setNodes((nds) => [...nds, ...flowNodes]);
+        setEdges((eds) => [...eds, ...flowEdges]);
+      });
+  }, [requestAiList, setNodes, setEdges, theme]);
+
+  useEffect(() => {
+    setNodes((nds) => {
+      let changed = false;
+      const next = nds.map((node) => {
+        if (node.type !== "swimlane") return node;
+        const data = node.data as SwimlaneNodeData;
+        const padding = 80;
+        let maxX = data.width;
+        let maxY = data.height;
+        nds.forEach((candidate) => {
+          if (candidate.id === node.id || candidate.type === "swimlane") return;
+          const dx = candidate.position.x - node.position.x;
+          const dy = candidate.position.y - node.position.y;
+          if (dx >= 0 && dy >= 0) {
+            const width = (candidate.width as number) ?? 180;
+            const height = (candidate.height as number) ?? 120;
+            maxX = Math.max(maxX, dx + width + padding);
+            maxY = Math.max(maxY, dy + height + padding);
+          }
+        });
+        if (maxX === data.width && maxY === data.height) return node;
+        changed = true;
+        return {
+          ...node,
+          data: { ...data, width: maxX, height: maxY },
+        };
+      });
+      return changed ? next : nds;
+    });
+  }, [nodes, setNodes]);
 
   return (
     <DiagramEditorProvider value={editorCtxValue}>

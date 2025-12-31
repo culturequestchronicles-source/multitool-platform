@@ -65,6 +65,24 @@ export default function BpmnPalette({
       </div>
 
       <div className="mt-4">
+        <div className="text-sm font-semibold">Swim Lanes</div>
+        <div className="mt-2 space-y-2">
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => onAdd({ type: "swimlane_horizontal", label: "Swim Lanes (Horizontal)" })}
+          >
+            Swim Lanes (Horizontal)
+          </button>
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => onAdd({ type: "swimlane_vertical", label: "Swim Lanes (Vertical)" })}
+          >
+            Swim Lanes (Vertical)
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4">
         <div className="text-sm font-semibold">Theme</div>
         <select
           className="mt-2 w-full rounded-2xl border px-3 py-2 text-sm"
@@ -120,6 +138,54 @@ export default function BpmnPalette({
         >
           Export SVG
         </button>
+        <button
+          className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportVisio}
+        >
+          Export SVG (Visio)
+        </button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportBpmn}
+        >
+          Export BPMN (Camunda)
+        </button>
+        <button
+          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportJson}
+        >
+          Export JSON
+        </button>
+      </div>
+
+      <div className="mt-2">
+        <button
+          className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportPptx}
+        >
+          Export PPTX
+        </button>
+      </div>
+
+      <div className="mt-4 rounded-xl border bg-gray-50 p-3 text-xs text-gray-700">
+        <div className="font-semibold">AI Assist</div>
+        <div className="mt-2 grid gap-2">
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
+            onClick={onGenerateSwimlanes}
+          >
+            Generate Swim Lanes
+          </button>
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
+            onClick={onGenerateProcess}
+          >
+            Generate Full Process
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 rounded-2xl border bg-gray-50 p-3 text-xs text-gray-700">
