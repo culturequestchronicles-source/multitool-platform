@@ -1,4 +1,5 @@
 import ToolCard from "@/components/ToolCard";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -110,8 +111,28 @@ export default function HomePage() {
             <span key={t} style={tagStyle}>{t}</span>
           ))}
         </div>
-        <footer style={{ marginTop: 40, color: "#6b7280", fontSize: 13, textAlign: "center" }}>
-          © {new Date().getFullYear()} Jhatpat. Privacy-first web utilities.
+        <footer
+          style={{
+            marginTop: 40,
+            color: "#6b7280",
+            fontSize: 13,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
+            <Link href="/about" style={footerLinkStyle}>
+              About
+            </Link>
+            <Link href="/privacy" style={footerLinkStyle}>
+              Privacy Policy
+            </Link>
+            <Link href="/contact" style={footerLinkStyle}>
+              Contact & Feedback
+            </Link>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            © {new Date().getFullYear()} Jhatpat. Privacy-first web utilities.
+          </div>
         </footer>
       </section>
     </main>
@@ -209,4 +230,10 @@ const pillStyle: React.CSSProperties = {
   display: "flex",
   gap: 12,
   alignItems: "center",
+};
+
+const footerLinkStyle: React.CSSProperties = {
+  color: "#4b5563",
+  textDecoration: "none",
+  fontWeight: 600,
 };

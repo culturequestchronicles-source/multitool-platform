@@ -2,18 +2,12 @@
 
 import { useState } from "react";
 
-const TYPES = [
-  { id: "business_process_flow", label: "Business Process (BPMN)" },
-  { id: "swimlane", label: "Swimlane" },
-  { id: "system_architecture", label: "System Architecture" },
-  { id: "org_chart", label: "Org Chart" },
-  { id: "decision_flow", label: "Decision Flow" },
-] as const;
+const DIAGRAM_TYPE = "business_process_flow";
+const DIAGRAM_LABEL = "Business Process (BPMN)";
 
 export default function NewDiagramButton() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [type, setType] = useState<(typeof TYPES)[number]["id"]>("business_process_flow");
   const [busy, setBusy] = useState(false);
 
   const create = async () => {
@@ -22,7 +16,7 @@ export default function NewDiagramButton() {
       const res = await fetch("/api/diagrams/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name || "Untitled Diagram", diagram_type: type }),
+        body: JSON.stringify({ name: name || "Untitled Diagram", diagram_type: DIAGRAM_TYPE }),
       });
 
       // Route redirects on success
@@ -70,17 +64,9 @@ export default function NewDiagramButton() {
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Diagram type</label>
-                <select
-                  className="mt-1 w-full rounded-xl border px-3 py-2"
-                  value={type}
-                  onChange={(e) => setType(e.target.value as any)}
-                >
-                  {TYPES.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-1 w-full rounded-xl border bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                  {DIAGRAM_LABEL}
+                </div>
               </div>
 
               <button
