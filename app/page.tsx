@@ -1,5 +1,5 @@
 import ToolCard from "@/components/ToolCard";
-import ToolSection from "@/components/home/ToolSection";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -312,9 +312,28 @@ export default function HomePage() {
             </span>
           ))}
         </div>
-
-        <footer style={{ marginTop: 40, color: "#6b7280", fontSize: 13, textAlign: "center" }}>
-          © {new Date().getFullYear()} Jhatpat. Privacy-first web utilities.
+        <footer
+          style={{
+            marginTop: 40,
+            color: "#6b7280",
+            fontSize: 13,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
+            <Link href="/about" style={footerLinkStyle}>
+              About
+            </Link>
+            <Link href="/privacy" style={footerLinkStyle}>
+              Privacy Policy
+            </Link>
+            <Link href="/contact" style={footerLinkStyle}>
+              Contact & Feedback
+            </Link>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            © {new Date().getFullYear()} Jhatpat. Privacy-first web utilities.
+          </div>
         </footer>
       </section>
     </main>
@@ -549,75 +568,8 @@ const pillStyle: React.CSSProperties = {
   alignItems: "center",
 };
 
-const diagramHeaderRow: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-end",
-  justifyContent: "space-between",
-  gap: 14,
-  flexWrap: "wrap",
-  marginBottom: 18,
-};
-
-const diagramTitle: React.CSSProperties = {
-  fontSize: 16,
-  fontWeight: 950,
-  color: "#0f172a",
-  letterSpacing: -0.2,
-};
-
-const diagramSub: React.CSSProperties = {
-  marginTop: 6,
-  fontSize: 13,
-  color: "#64748b",
-  lineHeight: 1.55,
-};
-
-const diagramHubBtn: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 16,
-  border: "1px solid #e5e7eb",
-  background: "white",
-  padding: "12px 16px",
-  fontSize: 12,
-  fontWeight: 950,
-  color: "#0f172a",
+const footerLinkStyle: React.CSSProperties = {
+  color: "#4b5563",
   textDecoration: "none",
-  boxShadow: "0 10px 24px rgba(0,0,0,0.04)",
-};
-
-const sectionCallout: React.CSSProperties = {
-  marginTop: 18,
-  border: "1px solid #e5e7eb",
-  background: "#f8fafc",
-  borderRadius: 18,
-  padding: 14,
-};
-
-const calloutBtnDark: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 14,
-  background: "#0f172a",
-  color: "white",
-  padding: "10px 12px",
-  fontSize: 12,
-  fontWeight: 950,
-  textDecoration: "none",
-};
-
-const calloutBtnLight: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 14,
-  background: "white",
-  color: "#0f172a",
-  border: "1px solid #e5e7eb",
-  padding: "10px 12px",
-  fontSize: 12,
-  fontWeight: 950,
-  textDecoration: "none",
+  fontWeight: 600,
 };

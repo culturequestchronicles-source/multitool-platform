@@ -13,7 +13,8 @@ export async function GET(
     return NextResponse.json({ error: "Missing code" }, { status: 400 });
   }
 
-  const { data, error } = await supabaseServer
+  const supabase = supabaseServer();
+  const { data, error } = await supabase
     .from("tiny_urls")
     .select("original_url")
     .eq("code", code)

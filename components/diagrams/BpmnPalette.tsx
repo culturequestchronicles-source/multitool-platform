@@ -4,14 +4,16 @@ import React from "react";
 import { THEMES, type DiagramTheme } from "@/lib/diagrams/themes";
 
 export type BpmnPaletteItem =
-  | { type: "start_event"; label: string; color: string }
-  | { type: "end_event"; label: string; color: string }
-  | { type: "task"; label: string; color: string }
-  | { type: "subprocess"; label: string; color: string }
-  | { type: "gateway_xor_split"; label: string; color: string }
-  | { type: "gateway_xor_merge"; label: string; color: string }
-  | { type: "intermediate_message"; label: string; color: string }
-  | { type: "intermediate_timer"; label: string; color: string };
+  | { type: "start_event"; label: string }
+  | { type: "end_event"; label: string }
+  | { type: "task"; label: string }
+  | { type: "subprocess"; label: string }
+  | { type: "gateway_xor_split"; label: string }
+  | { type: "gateway_xor_merge"; label: string }
+  | { type: "intermediate_message"; label: string }
+  | { type: "intermediate_timer"; label: string }
+  | { type: "swimlane_horizontal"; label: string }
+  | { type: "swimlane_vertical"; label: string };
 
 const ITEMS: BpmnPaletteItem[] = [
   { type: "start_event", label: "Start Event", color: "#16a34a" },
@@ -29,20 +31,23 @@ export default function BpmnPalette({
   setThemeId,
   onAdd,
   onExportSvg,
-  onSwimlaneHorizontal,
-  onSwimlaneVertical,
-  onAiGenerateSwimlanes,
-  onAiGenerateFullProcess,
+  onExportVisio,
+  onExportBpmn,
+  onExportJson,
+  onExportPptx,
+  onGenerateSwimlanes,
+  onGenerateProcess,
 }: {
   theme: DiagramTheme;
   setThemeId: (id: string) => void;
   onAdd: (item: BpmnPaletteItem) => void;
   onExportSvg: () => void;
-
-  onSwimlaneHorizontal: () => void;
-  onSwimlaneVertical: () => void;
-  onAiGenerateSwimlanes: () => void;
-  onAiGenerateFullProcess: () => void;
+  onExportVisio: () => void;
+  onExportBpmn: () => void;
+  onExportJson: () => void;
+  onExportPptx: () => void;
+  onGenerateSwimlanes: () => void;
+  onGenerateProcess: () => void;
 }) {
   return (
     <div className="w-[320px] shrink-0 border-r bg-white p-3">
@@ -62,6 +67,24 @@ export default function BpmnPalette({
             <span className="align-middle">{it.label}</span>
           </button>
         ))}
+      </div>
+
+      <div className="mt-4">
+        <div className="text-sm font-semibold">Swim Lanes</div>
+        <div className="mt-2 space-y-2">
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => onAdd({ type: "swimlane_horizontal", label: "Swim Lanes (Horizontal)" })}
+          >
+            Swim Lanes (Horizontal)
+          </button>
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
+            onClick={() => onAdd({ type: "swimlane_vertical", label: "Swim Lanes (Vertical)" })}
+          >
+            Swim Lanes (Vertical)
+          </button>
+        </div>
       </div>
 
       <div className="mt-4">
@@ -113,13 +136,61 @@ export default function BpmnPalette({
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2 grid gap-2">
         <button
           className="w-full rounded-2xl bg-black px-3 py-2 text-xs text-white"
           onClick={onExportSvg}
         >
           Export SVG
         </button>
+        <button
+          className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportVisio}
+        >
+          Export SVG (Visio)
+        </button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportBpmn}
+        >
+          Export BPMN (Camunda)
+        </button>
+        <button
+          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportJson}
+        >
+          Export JSON
+        </button>
+      </div>
+
+      <div className="mt-2">
+        <button
+          className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
+          onClick={onExportPptx}
+        >
+          Export PPTX
+        </button>
+      </div>
+
+      <div className="mt-4 rounded-xl border bg-gray-50 p-3 text-xs text-gray-700">
+        <div className="font-semibold">AI Assist</div>
+        <div className="mt-2 grid gap-2">
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
+            onClick={onGenerateSwimlanes}
+          >
+            Generate Swim Lanes
+          </button>
+          <button
+            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
+            onClick={onGenerateProcess}
+          >
+            Generate Full Process
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 rounded-2xl border bg-gray-50 p-3 text-xs text-gray-700">
