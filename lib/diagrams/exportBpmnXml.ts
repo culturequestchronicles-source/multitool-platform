@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Node, Edge } from "@xyflow/react";
 import type { BpmnNodeData } from "@/lib/diagrams/bpmnRules";
 
 const NODE_KIND_TO_TAG: Record<string, string> = {

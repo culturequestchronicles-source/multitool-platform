@@ -5,7 +5,6 @@ import DiagramEditorClient from "@/components/diagrams/DiagramEditorClient";
 export const dynamic = "force-dynamic";
 
 type ParentRef = { diagramId: string; subprocessNodeId?: string };
-
 type Crumb = { id: string; name: string };
 
 async function buildBreadcrumb(supabase: any, diagram: any): Promise<Crumb[]> {
@@ -31,7 +30,6 @@ async function buildBreadcrumb(supabase: any, diagram: any): Promise<Crumb[]> {
     current = p;
   }
 
-  // we collected current->parent->... so reverse
   return crumbs.reverse();
 }
 
@@ -84,7 +82,6 @@ export default async function DiagramEditorPage({
   }
 
   const parent = (diagram.standards_profile as any)?.parent as ParentRef | undefined;
-
   const focus =
     parent?.subprocessNodeId && parent.subprocessNodeId.trim().length
       ? `?focus=${encodeURIComponent(parent.subprocessNodeId)}`
@@ -93,9 +90,10 @@ export default async function DiagramEditorPage({
   const crumbs = await buildBreadcrumb(supabase, diagram);
 
   return (
-    <div className="w-full">
+    // ✅ KEY: fixed viewport container so the page itself doesn't scroll
+    <div className="w-full h-[100dvh] overflow-hidden flex flex-col">
       {/* Breadcrumb */}
-      <div className="border-b bg-white px-4 py-2">
+      <div className="border-b bg-white px-4 py-2 shrink-0">
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
           {crumbs.map((c, idx) => {
             const isLast = idx === crumbs.length - 1;
@@ -115,9 +113,9 @@ export default async function DiagramEditorPage({
         </div>
       </div>
 
-      {/* Back-to-parent bar (only shows for child diagrams) */}
+      {/* Back-to-parent bar */}
       {parent?.diagramId ? (
-        <div className="border-b bg-white px-4 py-2 text-sm flex items-center justify-between">
+        <div className="border-b bg-white px-4 py-2 text-sm flex items-center justify-between shrink-0">
           <div className="text-xs text-gray-600">
             This is a child process
             {parent.subprocessNodeId ? (
@@ -137,7 +135,10 @@ export default async function DiagramEditorPage({
         </div>
       ) : null}
 
-      <DiagramEditorClient diagram={diagram} />
+      {/* ✅ KEY: allow the editor to occupy the remaining height */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <DiagramEditorClient diagram={diagram} />
+      </div>
     </div>
   );
 }
