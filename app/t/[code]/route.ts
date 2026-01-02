@@ -1,34 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "../../../lib/supabaseServer";
+import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ code: string }> }
+  req: Request,
+  ctx: { params: Promise<{ code: string }> }
 ) {
-  const { code } = await context.params;
+  const { code } = await ctx.params;
 
-  if (!code) {
-    return NextResponse.json({ error: "Missing code" }, { status: 400 });
-  }
+  // ✅ IMPORTANT: supabaseServer is a function, must be called
+  const supabase = await supabaseServer(req);
 
-  const { data, error } = await supabaseServer
+  const { data, error } = await supabase
     .from("tiny_urls")
     .select("original_url")
     .eq("code", code)
     .maybeSingle();
 
-  if (error) {
-    return NextResponse.json(
-      { error: "Failed to resolve TinyURL" },
-      { status: 500 }
-    );
+  if (error || !data?.original_url) {
+    // fallback to home if invalid code
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
-  if (!data?.original_url) {
-    return NextResponse.json({ error: "TinyURL not found" }, { status: 404 });
-  }
-
-  return NextResponse.redirect(data.original_url, 302);
+  return NextResponse.redirect(data.original_url);
 }

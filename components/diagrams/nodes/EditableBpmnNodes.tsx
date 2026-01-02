@@ -1,37 +1,101 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Handle, Position, type NodeProps } from "reactflow";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { THEMES, type DiagramTheme } from "@/lib/diagrams/themes";
 import type { BpmnNodeData } from "@/lib/diagrams/bpmnRules";
 import { useDiagramEditor } from "@/components/diagrams/DiagramEditorContext";
 
-function shapeFor(kind: BpmnNodeData["kind"]) {
+type Shape =
+  | "rect"
+  | "diamond"
+  | "circle"
+  | "parallelogram"
+  | "document"
+  | "cylinder"
+  | "delay"
+  | "smallCircle";
+
+function shapeFor(kind: BpmnNodeData["kind"]): Shape {
   if (kind.includes("gateway")) return "diamond";
+  if (kind === "fork_join") return "diamond";
+  if (kind === "delay") return "delay";
+  if (kind === "connector") return "smallCircle";
+  if (kind === "database") return "cylinder";
+  if (kind === "document") return "document";
+  if (kind === "data_io") return "parallelogram";
   if (kind.endsWith("event")) return "circle";
   if (kind.startsWith("intermediate_")) return "circle";
+  if (kind === "loop_start" || kind === "loop_end") return "circle";
   return "rect";
 }
 
-export default function EditableBpmnNode(props: NodeProps<BpmnNodeData & { theme?: DiagramTheme }>) {
+function subtitleFor(kind: BpmnNodeData["kind"]) {
+  switch (kind) {
+    case "start_event":
+      return "Start Event";
+    case "end_event":
+      return "End Event";
+    case "task":
+      return "Task";
+    case "subprocess":
+      return "Sub-process";
+    case "intermediate_message":
+      return "Message Event";
+    case "intermediate_timer":
+      return "Timer Event";
+    case "gateway_xor_split":
+      return "XOR Split";
+    case "gateway_xor_merge":
+      return "XOR Merge";
+    case "data_io":
+      return "Data Input/Output";
+    case "document":
+      return "Document";
+    case "database":
+      return "Database";
+    case "connector":
+      return "Connector";
+    case "fork_join":
+      return "Fork/Join";
+    case "delay":
+      return "Delay";
+    case "loop_start":
+      return "Loop Start";
+    case "loop_end":
+      return "Loop End";
+    default:
+      return "Step";
+  }
+}
+
+/**
+ * ✅ IMPORTANT (for @xyflow/react v12):
+ * NodeProps is no longer "NodeProps<Data>" like old reactflow.
+ * So we use NodeProps without generics and type props.data manually.
+ */
+export default function EditableBpmnNode(props: NodeProps) {
   const editor = useDiagramEditor();
 
+  const data = props.data as BpmnNodeData & { theme?: DiagramTheme; meta?: any; __focusGlow?: any };
+
   const theme: DiagramTheme =
-    (props.data as any)?.theme ??
+    data?.theme ??
     editor.theme ??
     THEMES.find((t) => t.id === "paper") ??
     THEMES[0];
 
-  const kind = props.data.kind;
+  const kind = data.kind;
   const isSubprocess = kind === "subprocess";
 
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(props.data.label ?? "");
-  useEffect(() => setDraft(props.data.label ?? ""), [props.data.label]);
+  const [draft, setDraft] = useState(data.label ?? "");
+  useEffect(() => setDraft(data.label ?? ""), [data.label]);
 
   const shape = shapeFor(kind);
   const isDiamond = shape === "diamond";
-  const isCircle = shape === "circle";
+  const isCircle = shape === "circle" || shape === "smallCircle";
+  const isSmallCircle = shape === "smallCircle";
 
   const canHaveIncoming = kind !== "start_event";
   const canHaveOutgoing = kind !== "end_event";
@@ -40,85 +104,108 @@ export default function EditableBpmnNode(props: NodeProps<BpmnNodeData & { theme
     if (kind === "start_event") return `2px solid ${theme.accent}`;
     if (kind === "end_event") return `4px solid ${theme.accent}`;
     if (kind.startsWith("intermediate_")) return `3px double ${theme.accent}`;
+    if (kind === "loop_start" || kind === "loop_end") return `2px dashed ${theme.nodeBorder}`;
     return `2px solid ${theme.nodeBorder}`;
   }, [kind, theme.accent, theme.nodeBorder]);
 
-  const focusGlow = (props.data as any)?.__focusGlow
+  const focusGlow = data?.__focusGlow
     ? `0 0 0 5px rgba(0,0,0,0.14), 0 14px 30px rgba(0,0,0,0.14)`
     : undefined;
+
+  const colorOverride = String(data?.meta?.color ?? "").trim();
+  const nodeBg = /^#([0-9a-fA-F]{6})$/.test(colorOverride) ? colorOverride : theme.nodeBg;
+
+  const baseW = isDiamond ? 120 : isSmallCircle ? 110 : isCircle ? 140 : 190;
+  const basePad = isDiamond ? "22px" : "14px 16px";
 
   const outerStyle: React.CSSProperties = {
     color: theme.text,
     border: ring,
-    background: theme.nodeBg,
+    background: nodeBg,
     borderRadius: isCircle ? 999 : 14,
-    padding: isDiamond ? "22px" : "14px 16px",
-    minWidth: isDiamond ? 120 : isCircle ? 130 : 180,
+    padding: basePad,
+    minWidth: baseW,
     boxShadow: focusGlow ?? "0 10px 25px rgba(0,0,0,0.10)",
     transform: isDiamond ? "rotate(45deg)" : undefined,
     userSelect: "none",
     position: "relative",
-    opacity: (props.data as any)?.collapsed ? 0.95 : 1,
+    zIndex: 20,
   };
+
+  // ✅ FIX: never return undefined for CSSProperties
+  const clipStyle: React.CSSProperties =
+    shape === "parallelogram"
+      ? { clipPath: "polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%)" }
+      : {};
 
   const innerStyle: React.CSSProperties = isDiamond
     ? { transform: "rotate(-45deg)", textAlign: "center" }
     : { textAlign: "center" };
 
-  const subtitle =
-    kind === "start_event"
-      ? "Start Event"
-      : kind === "end_event"
-      ? "End Event"
-      : kind === "task"
-      ? "Task"
-      : kind === "subprocess"
-      ? "Sub-process"
-      : kind === "intermediate_message"
-      ? "Message Event"
-      : kind === "intermediate_timer"
-      ? "Timer Event"
-      : kind === "gateway_xor_split"
-      ? "XOR Split"
-      : "XOR Merge";
+  const subtitle = subtitleFor(kind);
 
   const commit = () => {
     const trimmed = draft.trim();
-    const next = trimmed.length ? trimmed : props.data.label ?? "";
+    const next = trimmed.length ? trimmed : data.label ?? "";
     setEditing(false);
     editor.renameNode(props.id, next);
   };
 
-  const childDiagramId = (props.data as any)?.childDiagramId as string | null | undefined;
-  const isCreating = editor.creatingChildFor === props.id;
-
-  // IMPORTANT: stop RF pointer capture so clicks work
   const stopRFPointer = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
   };
 
+  const handleStyle: React.CSSProperties = { zIndex: 30 };
+
   return (
     <div
-      style={outerStyle}
+      style={{ ...outerStyle, ...clipStyle }}
       onDoubleClick={(e) => {
         e.stopPropagation();
         setEditing(true);
       }}
       title="Double-click to rename"
     >
-      {canHaveIncoming && <Handle type="target" position={Position.Top} />}
+      {(shape === "document" || shape === "cylinder" || shape === "delay") && (
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 1 }}>
+          {shape === "document" && (
+            <svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%">
+              <path
+                d="M2,2 H98 V50 C88,44 78,56 68,50 C58,44 48,56 38,50 C28,44 18,56 2,50 Z"
+                fill="transparent"
+                stroke={theme.nodeBorder}
+                strokeWidth="2"
+              />
+            </svg>
+          )}
+          {shape === "cylinder" && (
+            <svg viewBox="0 0 100 70" preserveAspectRatio="none" width="100%" height="100%">
+              <ellipse cx="50" cy="12" rx="46" ry="10" fill="transparent" stroke={theme.nodeBorder} strokeWidth="2" />
+              <path d="M4,12 V58 C4,64 96,64 96,58 V12" fill="transparent" stroke={theme.nodeBorder} strokeWidth="2" />
+              <ellipse cx="50" cy="58" rx="46" ry="10" fill="transparent" stroke={theme.nodeBorder} strokeWidth="2" />
+            </svg>
+          )}
+          {shape === "delay" && (
+            <svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%">
+              <path d="M10,10 H70 A20,20 0 0 1 70,50 H10 Z" fill="transparent" stroke={theme.nodeBorder} strokeWidth="2" />
+            </svg>
+          )}
+        </div>
+      )}
+
+      {canHaveIncoming && (
+        <>
+          <Handle type="target" position={Position.Top} style={handleStyle} />
+          <Handle type="target" position={Position.Left} style={handleStyle} />
+          <Handle type="target" position={Position.Right} style={handleStyle} />
+          <Handle type="target" position={Position.Bottom} style={handleStyle} />
+        </>
+      )}
 
       <div style={innerStyle}>
-        {kind === "intermediate_message" && (
-          <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>✉</div>
-        )}
-        {kind === "intermediate_timer" && (
-          <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>⏱</div>
-        )}
-
         {!editing ? (
-          <div style={{ fontSize: 18, fontWeight: 800 }}>{props.data.label ?? ""}</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{data.label ?? ""}</div>
         ) : (
           <input
             autoFocus
@@ -131,11 +218,11 @@ export default function EditableBpmnNode(props: NodeProps<BpmnNodeData & { theme
               }
               if (e.key === "Escape") {
                 e.preventDefault();
-                setDraft(props.data.label ?? "");
+                setDraft(data.label ?? "");
                 setEditing(false);
               }
             }}
-            onBlur={() => commit()}
+            onBlur={commit}
             style={{
               width: "100%",
               padding: "8px 10px",
@@ -152,35 +239,17 @@ export default function EditableBpmnNode(props: NodeProps<BpmnNodeData & { theme
         )}
 
         <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>{subtitle}</div>
-
-        {isSubprocess && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 8,
-              left: "50%",
-              transform: isDiamond ? "translateX(-50%) rotate(-45deg)" : "translateX(-50%)",
-              width: 22,
-              height: 14,
-              border: `2px solid ${theme.nodeBorder}`,
-              borderRadius: 4,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 900,
-              fontSize: 12,
-              background: theme.nodeBg,
-            }}
-            title="Sub-process"
-          >
-            +
-          </div>
-        )}
       </div>
 
-      {canHaveOutgoing && <Handle type="source" position={Position.Bottom} />}
+      {canHaveOutgoing && (
+        <>
+          <Handle type="source" position={Position.Top} style={handleStyle} />
+          <Handle type="source" position={Position.Left} style={handleStyle} />
+          <Handle type="source" position={Position.Right} style={handleStyle} />
+          <Handle type="source" position={Position.Bottom} style={handleStyle} />
+        </>
+      )}
 
-      {/* Collapse toggle for subprocess */}
       {isSubprocess && (
         <button
           type="button"
@@ -201,76 +270,12 @@ export default function EditableBpmnNode(props: NodeProps<BpmnNodeData & { theme
             background: theme.nodeBg,
             color: theme.text,
             cursor: "pointer",
+            zIndex: 40,
           }}
           title="Collapse/Expand"
         >
-          {(props.data as any)?.collapsed ? "Expand" : "Collapse"}
+          {(data as any)?.collapsed ? "Expand" : "Collapse"}
         </button>
-      )}
-
-      {/* Create/Open child directly on node */}
-      {isSubprocess && (
-        <div
-          style={{
-            position: "absolute",
-            left: 12,
-            bottom: 10,
-            display: "flex",
-            gap: 8,
-            pointerEvents: "all",
-          }}
-          onPointerDownCapture={stopRFPointer}
-          onMouseDownCapture={stopRFPointer}
-          onClickCapture={(e) => e.stopPropagation()}
-        >
-          {!childDiagramId ? (
-            <button
-              type="button"
-              disabled={isCreating}
-              onPointerDownCapture={stopRFPointer}
-              onMouseDownCapture={stopRFPointer}
-              onClick={(e) => {
-                stopRFPointer(e);
-                editor.createChildForNode(props.id);
-              }}
-              style={{
-                borderRadius: 999,
-                border: `1px solid ${theme.nodeBorder}`,
-                padding: "6px 12px",
-                fontSize: 12,
-                background: "#000000",
-                color: "#ffffff",
-                opacity: isCreating ? 0.75 : 1,
-                cursor: isCreating ? "not-allowed" : "pointer",
-              }}
-              title="Create a child diagram for this subprocess"
-            >
-              {isCreating ? "Creating…" : "Create child"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onPointerDownCapture={stopRFPointer}
-              onMouseDownCapture={stopRFPointer}
-              onClick={(e) => {
-                stopRFPointer(e);
-                editor.openChild(childDiagramId);
-              }}
-              style={{
-                borderRadius: 999,
-                border: `1px solid ${theme.nodeBorder}`,
-                padding: "6px 12px",
-                fontSize: 12,
-                background: theme.nodeBg,
-                color: theme.text,
-                cursor: "pointer",
-              }}
-              title="Open child diagram"
-            >
-              Open child
-            </button>
-          )}
-        </div>
       )}
     </div>
   );

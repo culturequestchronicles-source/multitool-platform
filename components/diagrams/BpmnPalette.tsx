@@ -1,202 +1,152 @@
 "use client";
 
-import React from "react";
-import { THEMES, type DiagramTheme } from "@/lib/diagrams/themes";
+import React, { useMemo, useState } from "react";
 
-export type BpmnPaletteItem =
-  | { type: "start_event"; label: string; color: string }
-  | { type: "end_event"; label: string; color: string }
-  | { type: "task"; label: string; color: string }
-  | { type: "subprocess"; label: string; color: string }
-  | { type: "gateway_xor_split"; label: string; color: string }
-  | { type: "gateway_xor_merge"; label: string; color: string }
-  | { type: "intermediate_message"; label: string; color: string }
-  | { type: "intermediate_timer"; label: string; color: string };
+export type BpmnPaletteItem = {
+  kind:
+    | "start_event"
+    | "end_event"
+    | "intermediate_message"
+    | "intermediate_timer"
+    | "task"
+    | "subprocess"
+    | "gateway_xor_split"
+    | "gateway_xor_merge"
+    | "data_io"
+    | "document"
+    | "database"
+    | "connector"
+    | "fork_join"
+    | "delay"
+    | "loop_start"
+    | "loop_end";
+  label: string;
+  description?: string;
+  color: string; // used as node meta.color (bg)
+  accent?: string; // used for a small dot indicator
+};
 
-const ITEMS: BpmnPaletteItem[] = [
-  { type: "start_event", label: "Start Event", color: "#16a34a" },
-  { type: "task", label: "Task", color: "#2563eb" },
-  { type: "subprocess", label: "Sub-process", color: "#0f172a" },
-  { type: "gateway_xor_split", label: "XOR Split", color: "#f59e0b" },
-  { type: "gateway_xor_merge", label: "XOR Merge", color: "#f59e0b" },
-  { type: "intermediate_message", label: "Message Event", color: "#7c3aed" },
-  { type: "intermediate_timer", label: "Timer Event", color: "#db2777" },
-  { type: "end_event", label: "End Event", color: "#dc2626" },
-];
-
-export default function BpmnPalette({
-  theme,
-  setThemeId,
-  onAdd,
-  onExportSvg,
-  onSwimlaneHorizontal,
-  onSwimlaneVertical,
-  onAiGenerateSwimlanes,
-  onAiGenerateFullProcess,
-}: {
-  theme: DiagramTheme;
-  setThemeId: (id: string) => void;
+type Props = {
   onAdd: (item: BpmnPaletteItem) => void;
-  onExportSvg: () => void;
-
   onSwimlaneHorizontal: () => void;
   onSwimlaneVertical: () => void;
-  onAiGenerateSwimlanes: () => void;
-  onAiGenerateFullProcess: () => void;
-}) {
+};
+
+const GROUPS: Array<{
+  title: string;
+  items: BpmnPaletteItem[];
+}> = [
+  {
+    title: "BPMN Core",
+    items: [
+      { kind: "start_event", label: "Start Event", description: "Process start", color: "#ECFDF5", accent: "#22C55E" },
+      { kind: "task", label: "Task", description: "Work activity", color: "#EFF6FF", accent: "#3B82F6" },
+      { kind: "subprocess", label: "Sub-process", description: "Collapsible detail", color: "#F5F3FF", accent: "#8B5CF6" },
+      { kind: "gateway_xor_split", label: "XOR Split", description: "Decision (split)", color: "#FFFBEB", accent: "#EAB308" },
+      { kind: "gateway_xor_merge", label: "XOR Merge", description: "Decision (merge)", color: "#FFFBEB", accent: "#EAB308" },
+      { kind: "intermediate_message", label: "Message Event", description: "Receive message", color: "#F0FDFA", accent: "#14B8A6" },
+      { kind: "intermediate_timer", label: "Timer Event", description: "Wait/time", color: "#F0FDFA", accent: "#14B8A6" },
+      { kind: "end_event", label: "End Event", description: "Process end", color: "#FEF2F2", accent: "#EF4444" },
+    ],
+  },
+  {
+    title: "Enterprise Symbols",
+    items: [
+      { kind: "data_io", label: "Data I/O", description: "Input/Output", color: "#F0F9FF", accent: "#0EA5E9" },
+      { kind: "document", label: "Document", description: "Artifact", color: "#FFFBEB", accent: "#F59E0B" },
+      { kind: "database", label: "Database", description: "Store", color: "#F1F5F9", accent: "#64748B" },
+      { kind: "connector", label: "Connector", description: "Link", color: "#F8FAFC", accent: "#334155" },
+      { kind: "fork_join", label: "Fork/Join", description: "Parallel", color: "#F5F3FF", accent: "#7C3AED" },
+      { kind: "delay", label: "Delay", description: "Pause", color: "#FFF7ED", accent: "#FB923C" },
+      { kind: "loop_start", label: "Loop Start", description: "Iteration", color: "#ECFCCB", accent: "#84CC16" },
+      { kind: "loop_end", label: "Loop End", description: "Iteration", color: "#ECFCCB", accent: "#84CC16" },
+    ],
+  },
+];
+
+function pill(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export default function BpmnPalette({ onAdd, onSwimlaneHorizontal, onSwimlaneVertical }: Props) {
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    const qq = pill(q);
+    if (!qq) return GROUPS;
+    return GROUPS.map((g) => ({
+      ...g,
+      items: g.items.filter((it) => pill(`${it.label} ${it.description ?? ""} ${it.kind}`).includes(qq)),
+    })).filter((g) => g.items.length > 0);
+  }, [q]);
+
   return (
-    <div className="w-[320px] shrink-0 border-r bg-white p-3">
-      <div className="mb-2 text-sm font-semibold">BPMN Stencil</div>
+    <div className="w-[280px] border-r bg-white h-full flex flex-col">
+      <div className="p-3 border-b">
+        <div className="text-xs font-semibold text-gray-500 uppercase">BPMN Stencil</div>
+        <div className="mt-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search symbols…"
+            className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+          />
+        </div>
+      </div>
 
-      <div className="space-y-2">
-        {ITEMS.map((it) => (
-          <button
-            key={it.type}
-            onClick={() => onAdd(it)}
-            className="w-full rounded-2xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
-          >
-            <span
-              className="mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle"
-              style={{ background: it.color }}
-            />
-            <span className="align-middle">{it.label}</span>
-          </button>
+      <div className="flex-1 overflow-auto p-3 space-y-4">
+        {filtered.map((g) => (
+          <div key={g.title}>
+            <div className="text-xs font-semibold text-gray-600 mb-2">{g.title}</div>
+            <div className="grid grid-cols-1 gap-2">
+              {g.items.map((item) => (
+                <button
+                  key={item.kind}
+                  onClick={() => onAdd(item)}
+                  className="group flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 hover:shadow-sm hover:bg-gray-50 transition"
+                  title={item.description ?? item.label}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="h-9 w-9 rounded-xl border flex items-center justify-center"
+                      style={{ background: item.color, borderColor: "rgba(0,0,0,0.10)" }}
+                    >
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ background: item.accent ?? "#111827" }} />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-semibold text-gray-900">{item.label}</div>
+                      <div className="text-[11px] text-gray-500">{item.description ?? item.kind}</div>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-gray-400 group-hover:text-gray-600">Add</div>
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
-      </div>
 
-      <div className="mt-4">
-        <div className="text-sm font-semibold">Swim Lanes</div>
-        <div className="mt-2 space-y-2">
-          <button
-            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
-            onClick={() => onAdd({ type: "swimlane_horizontal", label: "Swim Lanes (Horizontal)" })}
-          >
-            Swim Lanes (Horizontal)
-          </button>
-          <button
-            className="w-full rounded-xl border px-3 py-2 text-left text-sm hover:bg-gray-50"
-            onClick={() => onAdd({ type: "swimlane_vertical", label: "Swim Lanes (Vertical)" })}
-          >
-            Swim Lanes (Vertical)
-          </button>
+        <div className="pt-3 border-t">
+          <div className="text-xs font-semibold text-gray-600 mb-2">Swimlanes</div>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              onClick={onSwimlaneHorizontal}
+              className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold hover:bg-gray-50"
+              title="Insert a horizontal swimlane container"
+            >
+              + Horizontal Swimlane
+            </button>
+            <button
+              onClick={onSwimlaneVertical}
+              className="rounded-xl border bg-white px-3 py-2 text-sm font-semibold hover:bg-gray-50"
+              title="Insert a vertical swimlane container"
+            >
+              + Vertical Swimlane
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="mt-4">
-        <div className="text-sm font-semibold">Theme</div>
-        <select
-          className="mt-2 w-full rounded-2xl border px-3 py-2 text-sm"
-          value={theme.id}
-          onChange={(e) => setThemeId(e.target.value)}
-        >
-          {THEMES.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mt-4">
-        <div className="text-sm font-semibold">Swim Lanes</div>
-
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            className="rounded-2xl border px-3 py-2 text-xs hover:bg-gray-50"
-            onClick={onSwimlaneHorizontal}
-          >
-            Horizontal
-          </button>
-          <button
-            className="rounded-2xl border px-3 py-2 text-xs hover:bg-gray-50"
-            onClick={onSwimlaneVertical}
-          >
-            Vertical
-          </button>
-        </div>
-
-        <div className="mt-2 grid gap-2">
-          <button
-            className="w-full rounded-2xl bg-black px-3 py-2 text-xs text-white"
-            onClick={onAiGenerateSwimlanes}
-          >
-            AI: Generate Swim Lanes
-          </button>
-          <button
-            className="w-full rounded-2xl border px-3 py-2 text-xs hover:bg-gray-50"
-            onClick={onAiGenerateFullProcess}
-          >
-            AI: Generate Full Process
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <button
-          className="w-full rounded-2xl bg-black px-3 py-2 text-xs text-white"
-          onClick={onExportSvg}
-        >
-          Export SVG
-        </button>
-        <button
-          className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
-          onClick={onExportVisio}
-        >
-          Export SVG (Visio)
-        </button>
-      </div>
-
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <button
-          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
-          onClick={onExportBpmn}
-        >
-          Export BPMN (Camunda)
-        </button>
-        <button
-          className="rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
-          onClick={onExportJson}
-        >
-          Export JSON
-        </button>
-      </div>
-
-      <div className="mt-2">
-        <button
-          className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-gray-50"
-          onClick={onExportPptx}
-        >
-          Export PPTX
-        </button>
-      </div>
-
-      <div className="mt-4 rounded-xl border bg-gray-50 p-3 text-xs text-gray-700">
-        <div className="font-semibold">AI Assist</div>
-        <div className="mt-2 grid gap-2">
-          <button
-            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
-            onClick={onGenerateSwimlanes}
-          >
-            Generate Swim Lanes
-          </button>
-          <button
-            className="w-full rounded-xl border px-3 py-2 text-xs hover:bg-white"
-            onClick={onGenerateProcess}
-          >
-            Generate Full Process
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-2xl border bg-gray-50 p-3 text-xs text-gray-700">
-        <div className="font-semibold">Validation (starter)</div>
-        <ul className="mt-1 list-disc pl-4">
-          <li>Start: no incoming</li>
-          <li>End: no outgoing</li>
-          <li>Intermediate Events: 1 in / 1 out</li>
-          <li>XOR Split: 1 incoming</li>
-          <li>XOR Merge: 1 outgoing</li>
-        </ul>
       </div>
     </div>
   );

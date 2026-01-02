@@ -56,5 +56,6 @@ export async function GET(req: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(new URL("/tools/diagrams", url.origin));
+  const next = url.searchParams.get("next") || "/tools/diagrams";
+  return NextResponse.redirect(new URL(next, url.origin));  
 }

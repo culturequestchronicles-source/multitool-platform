@@ -2,31 +2,36 @@
 
 import React from "react";
 import type { DiagramTheme } from "@/lib/diagrams/themes";
-import type { Node, Edge } from "reactflow";
 import type { LaneOrientation } from "@/lib/diagrams/swimlanes";
 
 export type EditorActions = {
   theme: DiagramTheme;
 
-  // subprocess drilldown
   creatingChildFor: string | null;
   createChildForNode: (nodeId: string) => void;
   openChild: (childId: string) => void;
 
-  // node edits
   renameNode: (nodeId: string, label: string) => void;
   toggleCollapsed: (nodeId: string) => void;
 
-  // swimlanes
+  // ✅ swimlane container
   upsertSwimlanes: (orientation: LaneOrientation) => void;
   aiGenerateSwimlanes: () => void;
 
-  // lane actions
-  renameLane: (laneId: string, name: string) => void;
-  setLaneDividers: (laneId: string, dividers: number) => void;
-  toggleLaneLock: (laneId: string) => void;
+  // ✅ swimlane header title (missing ранее)
+  renameSwimlaneHeader: (laneNodeId: string, label: string) => void;
 
-  // AI full process modal
+  // ✅ lane edits (inside container)
+  renameLane: (laneNodeId: string, laneIndex: number, name: string) => void;
+  setLaneDividers: (laneNodeId: string, dividers: number) => void;
+  setLaneDividerPositions: (laneNodeId: string, positions: number[]) => void;
+  toggleLaneLock: (laneNodeId: string) => void;
+  resizeLaneContainer: (laneNodeId: string, width: number, height: number) => void;
+
+  // ✅ lanes count (buttons in swimlane header)
+  addLane: (laneNodeId: string) => void;
+  removeLane: (laneNodeId: string) => void;
+
   openAiFullProcessModal: () => void;
 };
 

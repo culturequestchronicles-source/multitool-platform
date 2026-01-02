@@ -1,5 +1,6 @@
 import ToolCard from "@/components/ToolCard";
 import ToolSection from "@/components/home/ToolSection";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -188,9 +189,13 @@ export default function HomePage() {
                 Diagramming tools are saved to your account (magic link login). Choose a template and start building.
               </div>
             </div>
-            <a href="/tools/diagrams" style={diagramHubBtn}>
-              Open Diagrams Hub →
-            </a>
+
+            {/* ✅ HIDDEN: Open Diagrams Hub button */}
+            {false && (
+              <a href="/tools/diagrams" style={diagramHubBtn}>
+                Open Diagrams Hub →
+              </a>
+            )}
           </div>
 
           <div style={gridStyle}>
@@ -275,9 +280,13 @@ export default function HomePage() {
               </div>
 
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <a href="/tools/diagrams/new?type=bpmn" style={calloutBtnDark}>
-                  Start BPMN →
-                </a>
+                {/* ✅ HIDDEN: Start BPMN button */}
+                {false && (
+                  <a href="/tools/diagrams/new?type=bpmn" style={calloutBtnDark}>
+                    Start BPMN →
+                  </a>
+                )}
+
                 <a href="/tools/diagrams/new?type=swimlanes" style={calloutBtnLight}>
                   Start Swimlanes →
                 </a>
@@ -301,9 +310,7 @@ export default function HomePage() {
       {/* TAGS */}
       <section id="tags" style={{ padding: "10px 24px 70px", maxWidth: 1180, margin: "0 auto" }}>
         <h2 style={{ fontSize: 26, fontWeight: 950, letterSpacing: -0.3 }}>Capabilities</h2>
-        <p style={{ marginTop: 8, color: "#6b7280" }}>
-          Search-friendly tags to help users discover tools faster.
-        </p>
+        <p style={{ marginTop: 8, color: "#6b7280" }}>Search-friendly tags to help users discover tools faster.</p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
           {TAGS.map((t) => (
@@ -314,7 +321,18 @@ export default function HomePage() {
         </div>
 
         <footer style={{ marginTop: 40, color: "#6b7280", fontSize: 13, textAlign: "center" }}>
-          © {new Date().getFullYear()} Jhatpat. Privacy-first web utilities.
+          <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
+            <Link href="/about" style={footerLinkStyle}>
+              About
+            </Link>
+            <Link href="/privacy" style={footerLinkStyle}>
+              Privacy Policy
+            </Link>
+            <Link href="/contact" style={footerLinkStyle}>
+              Contact & Feedback
+            </Link>
+          </div>
+          <div style={{ marginTop: 10 }}>© {new Date().getFullYear()} Jhatpat. Privacy-first web utilities.</div>
         </footer>
       </section>
     </main>
@@ -620,4 +638,10 @@ const calloutBtnLight: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 950,
   textDecoration: "none",
+};
+
+const footerLinkStyle: React.CSSProperties = {
+  color: "#4b5563",
+  textDecoration: "none",
+  fontWeight: 600,
 };

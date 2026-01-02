@@ -1,227 +1,339 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
-import type { NodeProps } from "reactflow";
-import { THEMES, type DiagramTheme } from "@/lib/diagrams/themes";
-import type { SwimlaneData } from "@/lib/diagrams/swimlanes";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
+import type { NodeProps } from "@xyflow/react";
 import { useDiagramEditor } from "@/components/diagrams/DiagramEditorContext";
+import { getDividerPositions, moveDivider, type SwimlaneNodeData } from "@/lib/diagrams/swimlanes";
 
-export default function SwimlaneNode(props: NodeProps<SwimlaneData & { theme?: DiagramTheme }>) {
+/**
+ * ✅ @xyflow/react v12 NodeProps is NOT generic (unlike old reactflow).
+ * So we use NodeProps without generics and cast props.data.
+ * This makes it build-safe for Vercel/Next.js.
+ */
+export default function SwimlaneNode(props: NodeProps) {
   const editor = useDiagramEditor();
-  const theme: DiagramTheme =
-    (props.data as any)?.theme ?? editor.theme ?? THEMES.find((t) => t.id === "paper") ?? THEMES[0];
 
-  const d = props.data;
-  const orientation = d.orientation;
-  const color = d.color ?? "#f8fafc";
-  const dividers = Math.max(0, Number(d.dividers ?? 0));
-  const locked = !!d.locked;
-
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [draftName, setDraftName] = useState(d.label ?? "Lane");
-  const [draftDiv, setDraftDiv] = useState(String(dividers));
-
-  useEffect(() => {
-    setDraftName(d.label ?? "Lane");
-    setDraftDiv(String(dividers));
-  }, [d.label, dividers]);
-
-  const stop = (e: any) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const d = (props.data ?? {}) as SwimlaneNodeData & {
+    theme?: any;
   };
 
-  const dividerEls = useMemo(() => {
-    if (!dividers) return null;
-    const lines: React.ReactNode[] = [];
-    for (let i = 1; i <= dividers; i++) {
-      const pct = (i / (dividers + 1)) * 100;
-      lines.push(
-        <div
-          key={i}
-          style={
-            orientation === "horizontal"
-              ? { position: "absolute", left: `${pct}%`, top: 0, bottom: 0, width: 1, background: "rgba(0,0,0,0.10)" }
-              : { position: "absolute", top: `${pct}%`, left: 0, right: 0, height: 1, background: "rgba(0,0,0,0.10)" }
-          }
-        />
-      );
-    }
-    return lines;
-  }, [dividers, orientation]);
+  const theme = d?.theme ?? editor.theme;
+
+  const orientation: "horizontal" | "vertical" =
+    d.orientation === "vertical" ? "vertical" : "horizontal";
+
+  const lanes: string[] =
+    Array.isArray(d.lanes) && d.lanes.length ? d.lanes : ["Lane 1"];
+
+  const laneCount = Math.max(1, lanes.length);
+
+  const width = Number.isFinite(Number(d.width)) ? Number(d.width) : 1100;
+  const height = Number.isFinite(Number(d.height)) ? Number(d.height) : 520;
+
+  // Header + lane-name column sizing
+  const headerH = 54;
+  const laneNameCol = orientation === "horizontal" ? 170 : 140;
+
+  const laneBandW =
+    orientation === "vertical"
+      ? (width - laneNameCol) / laneCount
+      : width - laneNameCol;
+
+  const laneBandH =
+    orientation === "horizontal"
+      ? (height - headerH) / laneCount
+      : height - headerH;
+
+  // Header editing
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [headerDraft, setHeaderDraft] = useState<string>(
+    String(d.label ?? "Swim Lanes")
+  );
+
+  useEffect(() => {
+    setHeaderDraft(String(d.label ?? "Swim Lanes"));
+  }, [d.label]);
+
+  // Divider positions (fractions)
+  const dividerPositions = useMemo(() => getDividerPositions(d), [d]);
+
+  const stop = useCallback((e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const commitHeader = useCallback(() => {
+    const next = headerDraft.trim() || "Swim Lanes";
+    setEditingHeader(false);
+
+    // optional chaining so it won't crash if not implemented yet
+    editor.renameSwimlaneHeader?.(props.id, next);
+  }, [editor, headerDraft, props.id]);
+
+  // Divider drag state
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
 
   return (
     <div
       style={{
-        width: "100%",
-        height: "100%",
+        width,
+        height,
         borderRadius: 18,
-        border: `1px solid ${theme.nodeBorder}`,
-        background: color,
+        border: `2px solid ${theme.laneBorder}`,
+        background: theme.laneBg,
         position: "relative",
-        overflow: "hidden",
         boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-        opacity: locked ? 0.92 : 1,
+        overflow: "hidden",
+        // keep it "container-like"
+        zIndex: 0,
       }}
-      onContextMenu={(e) => {
-        stop(e);
-        setMenuOpen(true);
-      }}
-      title="Right-click for lane options"
     >
-      {/* Header chip */}
+      {/* Header */}
+      <div
+        style={{
+          height: headerH,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 12px",
+          background: "rgba(255,255,255,0.85)",
+          borderBottom: `2px solid ${theme.laneBorder}`,
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setEditingHeader(true);
+        }}
+        title="Double-click to rename swimlane"
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {!editingHeader ? (
+            <div style={{ fontWeight: 900, fontSize: 16, color: theme.text }}>
+              {String(d.label ?? "Swim Lanes")}
+            </div>
+          ) : (
+            <input
+              autoFocus
+              value={headerDraft}
+              onChange={(e) => setHeaderDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitHeader();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setEditingHeader(false);
+                  setHeaderDraft(String(d.label ?? "Swim Lanes"));
+                }
+              }}
+              onBlur={commitHeader}
+              style={{
+                width: 240,
+                padding: "6px 10px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.18)",
+                fontSize: 14,
+                fontWeight: 800,
+                outline: "none",
+              }}
+            />
+          )}
+
+          <div style={{ fontSize: 12, color: "rgba(0,0,0,0.55)" }}>
+            {orientation === "horizontal" ? "Horizontal" : "Vertical"} •{" "}
+            {laneCount} lanes
+          </div>
+        </div>
+
+        {/* Lane controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onPointerDownCapture={stop}
+            onMouseDownCapture={stop}
+            onClick={(e) => {
+              stop(e);
+              editor.addLane(props.id);
+            }}
+            style={{
+              borderRadius: 999,
+              border: "1px solid rgba(0,0,0,0.18)",
+              padding: "6px 10px",
+              fontSize: 12,
+              cursor: "pointer",
+              background: "white",
+            }}
+            title="Add lane"
+          >
+            + Lane
+          </button>
+          <button
+            onPointerDownCapture={stop}
+            onMouseDownCapture={stop}
+            onClick={(e) => {
+              stop(e);
+              editor.removeLane(props.id);
+            }}
+            style={{
+              borderRadius: 999,
+              border: "1px solid rgba(0,0,0,0.18)",
+              padding: "6px 10px",
+              fontSize: 12,
+              cursor: "pointer",
+              background: "white",
+            }}
+            title="Remove lane"
+          >
+            − Lane
+          </button>
+        </div>
+      </div>
+
+      {/* Lane-name column divider */}
       <div
         style={{
           position: "absolute",
-          left: 12,
-          top: 10,
-          display: "inline-flex",
-          gap: 8,
-          alignItems: "center",
-          padding: "6px 10px",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.75)",
-          border: `1px solid ${theme.nodeBorder}`,
-          color: theme.text,
-          fontSize: 12,
-          fontWeight: 900,
+          top: headerH,
+          bottom: 0,
+          left: laneNameCol,
+          width: 2,
+          background: theme.laneBorder,
         }}
-        onPointerDownCapture={stop}
-        onMouseDownCapture={stop}
-      >
-        <span>{d.label}</span>
-        {locked && (
-          <span
-            style={{
-              fontSize: 11,
-              padding: "2px 8px",
-              borderRadius: 999,
-              background: "rgba(0,0,0,0.06)",
-              border: `1px solid ${theme.nodeBorder}`,
-              fontWeight: 800,
-            }}
-          >
-            Locked
-          </span>
-        )}
-      </div>
+      />
 
-      {dividerEls}
+      {/* Lanes */}
+      {lanes.map((name, idx) => {
+        const isH = orientation === "horizontal";
+        const top = headerH + (isH ? idx * laneBandH : 0);
+        const left = isH ? 0 : laneNameCol + idx * laneBandW;
 
-      {menuOpen && (
-        <div
-          style={{
-            position: "absolute",
-            right: 12,
-            top: 12,
-            width: 270,
-            borderRadius: 18,
-            border: `1px solid ${theme.nodeBorder}`,
-            background: "#fff",
-            padding: 12,
-            boxShadow: "0 14px 35px rgba(0,0,0,0.18)",
-            zIndex: 50,
-          }}
-          onPointerDownCapture={stop}
-          onMouseDownCapture={stop}
-          onClickCapture={stop}
-        >
-          <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 8 }}>Lane options</div>
+        const bandW = isH ? width : laneBandW;
+        const bandH = isH ? laneBandH : height - headerH;
 
-          <label style={{ fontSize: 11, fontWeight: 800, color: "#475569" }}>Rename</label>
-          <input
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            style={{
-              width: "100%",
-              marginTop: 6,
-              borderRadius: 14,
-              border: `1px solid ${theme.nodeBorder}`,
-              padding: "8px 10px",
-              fontSize: 12,
-            }}
-          />
+        const nameBox: React.CSSProperties = {
+          position: "absolute",
+          top,
+          left: 0,
+          width: laneNameCol,
+          height: bandH,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 10,
+          borderBottom:
+            isH && idx < laneCount - 1 ? `2px solid ${theme.laneBorder}` : undefined,
+          borderRight: `2px solid ${theme.laneBorder}`,
+          background: "rgba(255,255,255,0.6)",
+          userSelect: "none",
+        };
 
-          <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 800, color: "#475569" }}>Dividers</label>
-              <input
-                type="number"
-                min={0}
-                max={12}
-                value={draftDiv}
-                onChange={(e) => setDraftDiv(e.target.value)}
+        const contentBox: React.CSSProperties = {
+          position: "absolute",
+          top,
+          left: isH ? laneNameCol : left,
+          width: isH ? width - laneNameCol : bandW,
+          height: bandH,
+          borderBottom:
+            isH && idx < laneCount - 1 ? `2px solid ${theme.laneBorder}` : undefined,
+        };
+
+        return (
+          <React.Fragment key={idx}>
+            {/* Lane name area */}
+            <div
+              style={nameBox}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                const next = prompt("Lane name:", name);
+                if (next !== null) editor.renameLane(props.id, idx, next.trim() || name);
+              }}
+              title="Double-click to rename lane"
+            >
+              <div
                 style={{
-                  width: "100%",
-                  marginTop: 6,
-                  borderRadius: 14,
-                  border: `1px solid ${theme.nodeBorder}`,
-                  padding: "8px 10px",
-                  fontSize: 12,
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", alignItems: "end" }}>
-              <button
-                type="button"
-                onClick={() => editor.toggleLaneLock(props.id)}
-                style={{
-                  width: "100%",
-                  borderRadius: 14,
-                  border: `1px solid ${theme.nodeBorder}`,
-                  padding: "8px 10px",
-                  fontSize: 12,
-                  background: locked ? "#0f172a" : "#f8fafc",
-                  color: locked ? "#fff" : "#0f172a",
-                  cursor: "pointer",
-                  fontWeight: 800,
+                  fontSize: 16,
+                  fontWeight: 900,
+                  color: theme.text,
+                  textAlign: "center",
+                  lineHeight: 1.15,
                 }}
               >
-                {locked ? "Unlock" : "Lock"}
-              </button>
+                {name}
+              </div>
             </div>
-          </div>
 
-          <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              style={{
-                borderRadius: 14,
-                border: `1px solid ${theme.nodeBorder}`,
-                padding: "8px 10px",
-                fontSize: 12,
-                background: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              Close
-            </button>
+            {/* Lane content area */}
+            <div style={contentBox} />
+          </React.Fragment>
+        );
+      })}
 
-            <button
-              type="button"
-              onClick={() => {
-                editor.renameLane(props.id, draftName.trim() || "Lane");
-                editor.setLaneDividers(props.id, Math.max(0, Number(draftDiv || 0)));
-                setMenuOpen(false);
+      {/* Internal dividers (draggable dots) */}
+      {dividerPositions.map((p: number, i: number) => {
+        const isH = orientation === "horizontal";
+        const x = isH ? laneNameCol + p * (width - laneNameCol) : laneNameCol;
+        const y = isH ? headerH : headerH + p * (height - headerH);
+
+        return (
+          <div key={i}>
+            {/* divider line */}
+            <div
+              style={{
+                position: "absolute",
+                left: isH ? x : laneNameCol,
+                top: isH ? headerH : y,
+                width: isH ? 2 : width - laneNameCol,
+                height: isH ? height - headerH : 2,
+                background: theme.laneBorder,
+                opacity: 0.9,
+              }}
+            />
+
+            {/* drag dot */}
+            <div
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                (e.target as any).setPointerCapture?.(e.pointerId);
+                setDraggingIdx(i);
+              }}
+              onPointerMove={(e) => {
+                if (draggingIdx !== i) return;
+                e.stopPropagation();
+
+                const container = e.currentTarget.parentElement as HTMLElement | null;
+                if (!container) return;
+
+                const rect = container.getBoundingClientRect();
+
+                const rel = isH
+                  ? (e.clientX - rect.left - laneNameCol) / (rect.width - laneNameCol)
+                  : (e.clientY - rect.top - headerH) / (rect.height - headerH);
+
+                const next = Math.min(0.95, Math.max(0.05, rel));
+                const moved = moveDivider(dividerPositions, i, next);
+
+                editor.setLaneDividerPositions(props.id, moved);
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                setDraggingIdx(null);
               }}
               style={{
-                borderRadius: 14,
-                border: `1px solid ${theme.nodeBorder}`,
-                padding: "8px 10px",
-                fontSize: 12,
-                background: "#0f172a",
-                color: "#fff",
-                cursor: "pointer",
-                fontWeight: 900,
+                position: "absolute",
+                left: isH ? x - 6 : laneNameCol + 10,
+                top: isH ? headerH + 10 : y - 6,
+                width: 12,
+                height: 12,
+                borderRadius: 999,
+                background: theme.accent,
+                boxShadow: "0 6px 14px rgba(0,0,0,0.18)",
+                cursor: isH ? "ew-resize" : "ns-resize",
+                touchAction: "none",
               }}
-            >
-              Apply
-            </button>
+              title="Drag divider"
+            />
           </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 }
