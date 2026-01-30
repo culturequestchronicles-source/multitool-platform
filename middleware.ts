@@ -2,6 +2,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+
+  // Always allow these (important for SEO + Next internals)
+  const isAlwaysPublic =
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname.startsWith("/google") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/public");
+
+  if (isAlwaysPublic) return NextResponse.next();
+
   const res = NextResponse.next();
 
   const supabase = createServerClient(
@@ -25,15 +38,13 @@ export async function middleware(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = req.nextUrl.pathname;
-
-  // Protect diagrams tool + its APIs
+  // Protect diagrams tool + its APIs only
   const protectedPaths =
-    pathname.startsWith("/tools/diagrams") ||
-    pathname.startsWith("/api/diagrams");
+    pathname.startsWith("/tools/diagrams") || pathname.startsWith("/api/diagrams");
 
   // Allow login + callback
-  const allowPaths = pathname.startsWith("/login") || pathname.startsWith("/auth/callback");
+  const allowPaths =
+    pathname.startsWith("/login") || pathname.startsWith("/auth/callback");
 
   if (protectedPaths && !allowPaths && !user) {
     const loginUrl = req.nextUrl.clone();
