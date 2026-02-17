@@ -32,7 +32,11 @@ export default memo(function OrgGroupNode(props: NodeProps) {
         minHeight={36}
         maxWidth={900}
         maxHeight={120}
-        onResizeEnd={(_, __, size) => editor.resizeNode(props.id, size.width, size.height)}
+        onResizeEnd={(_, params: any) => {
+          const w = Number(params?.width ?? params?.size?.width);
+          const h = Number(params?.height ?? params?.size?.height);
+          if (Number.isFinite(w) && Number.isFinite(h)) editor.resizeNode(props.id, w, h);
+        }}
       />
       <div
         style={{

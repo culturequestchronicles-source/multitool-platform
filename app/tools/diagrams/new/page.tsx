@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setEditKey, upsertRecent } from "@/lib/diagrams/localRecents";
 
@@ -38,7 +38,7 @@ function defaultNameFor(type: string) {
   }
 }
 
-export default function NewDiagramPage() {
+function NewDiagramInner() {
   const router = useRouter();
   const search = useSearchParams();
 
@@ -95,4 +95,12 @@ export default function NewDiagramPage() {
   }, [router, search]);
 
   return <div className="p-6 text-sm text-gray-700">Creating a new diagram…</div>;
+}
+
+export default function NewDiagramPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-gray-700">Creating a new diagram…</div>}>
+      <NewDiagramInner />
+    </Suspense>
+  );
 }

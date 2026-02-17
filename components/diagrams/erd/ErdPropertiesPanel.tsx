@@ -5,7 +5,10 @@ import type { Node } from "@xyflow/react";
 import type { ErdEntityNodeData, ErdField } from "@/lib/diagrams/erd";
 
 function isEntity(n: Node | null): n is Node<ErdEntityNodeData> {
-  return Boolean(n) && (String((n.data as any)?.kind ?? "") === "erd_entity" || String(n.type ?? "") === "erd_entity");
+  if (!n) return false;
+  const kind = String((n.data as any)?.kind ?? "");
+  const type = String(n.type ?? "");
+  return kind === "erd_entity" || type === "erd_entity";
 }
 
 const COMMON_TYPES = ["uuid", "int", "bigint", "text", "varchar(255)", "boolean", "timestamp", "timestamptz", "jsonb"];

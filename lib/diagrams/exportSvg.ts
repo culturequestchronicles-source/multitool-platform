@@ -1,5 +1,5 @@
 import type { Node, Edge } from "@xyflow/react";
-import { getSmoothStepPath, type Position } from "@xyflow/system";
+import { getSmoothStepPath, Position } from "@xyflow/system";
 
 function esc(s: string) {
   return (s ?? "")
@@ -42,15 +42,17 @@ function sideFromHandle(handleId?: string | null): "top" | "right" | "bottom" | 
   return null;
 }
 
-function oppositeSide(s: "top" | "right" | "bottom" | "left") {
+type Side = "top" | "right" | "bottom" | "left";
+
+function oppositeSide(s: Side): Side {
   return s === "top" ? "bottom" : s === "bottom" ? "top" : s === "left" ? "right" : "left";
 }
 
 function toPosition(s: "top" | "right" | "bottom" | "left"): Position {
-  return s === "top" ? "top" : s === "right" ? "right" : s === "bottom" ? "bottom" : "left";
+  return s === "top" ? Position.Top : s === "right" ? Position.Right : s === "bottom" ? Position.Bottom : Position.Left;
 }
 
-function handlePoint(abs: { x: number; y: number; w: number; h: number }, side: "top" | "right" | "bottom" | "left") {
+function handlePoint(abs: { x: number; y: number; w: number; h: number }, side: Side) {
   const { x, y, w, h } = abs;
   if (side === "top") return { x: x + w / 2, y };
   if (side === "bottom") return { x: x + w / 2, y: y + h };
@@ -64,11 +66,11 @@ function chooseAutoSides(src: { x: number; y: number; w: number; h: number }, tg
   const dx = tc.x - sc.x;
   const dy = tc.y - sc.y;
   if (Math.abs(dx) >= Math.abs(dy)) {
-    const s = dx >= 0 ? "right" : "left";
-    return { source: s as const, target: oppositeSide(s as any) as any };
+    const source: Side = dx >= 0 ? "right" : "left";
+    return { source, target: oppositeSide(source) };
   }
-  const s = dy >= 0 ? "bottom" : "top";
-  return { source: s as const, target: oppositeSide(s as any) as any };
+  const source: Side = dy >= 0 ? "bottom" : "top";
+  return { source, target: oppositeSide(source) };
 }
 
 export function exportSimpleSvg(nodes: Node[], edges: Edge[], opts?: { title?: string }) {

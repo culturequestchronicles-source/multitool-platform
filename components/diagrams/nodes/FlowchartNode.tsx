@@ -247,10 +247,13 @@ export default memo(function FlowchartNode(props: NodeProps) {
         minHeight={60}
         maxWidth={860}
         maxHeight={860}
-        onResizeEnd={(_, __, size) => editor.resizeNode(id, size.width, size.height)}
+        onResizeEnd={(_, params: any) => {
+          const w = Number(params?.width ?? params?.size?.width);
+          const h = Number(params?.height ?? params?.size?.height);
+          if (Number.isFinite(w) && Number.isFinite(h)) editor.resizeNode(id, w, h);
+        }}
       />
       {body}
     </div>
   );
 });
-

@@ -126,10 +126,12 @@ export function importPostgresDDL(sql: string): { nodes: Node[]; edges: Edge[]; 
       }
 
       // column def: name type ...
-      const mm = line.match(/^"?(?<name>[\w -]+)"?\s+(?<type>[\w]+(\s*\([^)]*\))?(\s+[\w]+(\s*\([^)]*\))?)?)(?<rest>[\s\S]*)$/);
-      const name = mm?.groups?.name?.trim();
-      const type = mm?.groups?.type?.trim() ?? "text";
-      const rest = mm?.groups?.rest?.toLowerCase() ?? "";
+      // Avoid named capture groups so we can keep TS target at ES2017.
+      // 1=name, 2=type, 3=rest
+      const mm = line.match(/^"?([\w -]+)"?\s+([\w]+(?:\s*\([^)]*\))?(?:\s+[\w]+(?:\s*\([^)]*\))?)?)([\s\S]*)$/);
+      const name = mm?.[1]?.trim();
+      const type = mm?.[2]?.trim() ?? "text";
+      const rest = mm?.[3]?.toLowerCase() ?? "";
       if (!name) continue;
 
       const nullable = !rest.includes("not null");
@@ -209,4 +211,3 @@ export function importPostgresDDL(sql: string): { nodes: Node[]; edges: Edge[]; 
   void byId;
   return { nodes, edges, warnings };
 }
-

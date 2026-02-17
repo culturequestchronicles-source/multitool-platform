@@ -17,7 +17,7 @@ import {
   Shield,
   BadgeCheck,
 } from "lucide-react";
-import { DATA_LAYER_COLORS, type DataArchitectureNodeData } from "@/lib/diagrams/dataArchitecture";
+import { DATA_LAYER_COLORS, type DataArchitectureLayer, type DataArchitectureNodeData } from "@/lib/diagrams/dataArchitecture";
 import { useDataArchitectureStore } from "@/lib/diagrams/dataArchitectureStore";
 
 function iconKeyFor(objectType: string) {
@@ -47,10 +47,11 @@ export default memo(function DataArchitectureNode(props: NodeProps) {
 
   const label = String(d.label ?? "Data Object");
   const subtitle = String(d.subtitle ?? "");
-  const layer = String(d.layer ?? "processing") as any;
+  const rawLayer = String(d.layer ?? "processing");
+  const layer = (rawLayer in DATA_LAYER_COLORS ? rawLayer : "processing") as DataArchitectureLayer;
   const objectType = String(d.objectType ?? "");
 
-  const layerColor = DATA_LAYER_COLORS[layer as any] ?? DATA_LAYER_COLORS.processing;
+  const layerColor = DATA_LAYER_COLORS[layer];
   const fill = String(d.meta?.color ?? layerColor.fill);
   const border = String(d.meta?.border ?? layerColor.border);
 

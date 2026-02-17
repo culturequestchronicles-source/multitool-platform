@@ -75,7 +75,11 @@ export default memo(function ErdAttributeNode(props: NodeProps) {
         minHeight={70}
         maxWidth={520}
         maxHeight={320}
-        onResizeEnd={(_, __, size) => editor.resizeNode(id, size.width, size.height)}
+        onResizeEnd={(_, params: any) => {
+          const w = Number(params?.width ?? params?.size?.width);
+          const h = Number(params?.height ?? params?.size?.height);
+          if (Number.isFinite(w) && Number.isFinite(h)) editor.resizeNode(id, w, h);
+        }}
       />
 
       <div
@@ -159,4 +163,3 @@ export default memo(function ErdAttributeNode(props: NodeProps) {
     </div>
   );
 });
-

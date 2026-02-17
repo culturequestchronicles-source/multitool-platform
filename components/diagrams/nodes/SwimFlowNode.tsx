@@ -171,7 +171,11 @@ export default memo(function SwimFlowNode(props: NodeProps) {
         minHeight={50}
         maxWidth={800}
         maxHeight={800}
-        onResizeEnd={(_, __, size) => editor.resizeNode(id, size.width, size.height)}
+        onResizeEnd={(_, params: any) => {
+          const w = Number(params?.width ?? params?.size?.width);
+          const h = Number(params?.height ?? params?.size?.height);
+          if (Number.isFinite(w) && Number.isFinite(h)) editor.resizeNode(id, w, h);
+        }}
       />
 
       {/* Shapes */}
