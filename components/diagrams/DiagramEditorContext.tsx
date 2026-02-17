@@ -11,24 +11,26 @@ export type EditorActions = {
   createChildForNode: (nodeId: string) => void;
   openChild: (childId: string) => void;
 
+  // ✅ general node edit
   renameNode: (nodeId: string, label: string) => void;
+  resizeNode: (nodeId: string, width: number, height: number) => void; // ✅ NEW
+  updateNodeData: (nodeId: string, patch: Record<string, any>) => void;
   toggleCollapsed: (nodeId: string) => void;
 
   // ✅ swimlane container
   upsertSwimlanes: (orientation: LaneOrientation) => void;
   aiGenerateSwimlanes: () => void;
 
-  // ✅ swimlane header title (missing ранее)
+  // ✅ swimlane header title
   renameSwimlaneHeader: (laneNodeId: string, label: string) => void;
 
-  // ✅ lane edits (inside container)
+  // ✅ lane edits
   renameLane: (laneNodeId: string, laneIndex: number, name: string) => void;
   setLaneDividers: (laneNodeId: string, dividers: number) => void;
   setLaneDividerPositions: (laneNodeId: string, positions: number[]) => void;
   toggleLaneLock: (laneNodeId: string) => void;
   resizeLaneContainer: (laneNodeId: string, width: number, height: number) => void;
 
-  // ✅ lanes count (buttons in swimlane header)
   addLane: (laneNodeId: string) => void;
   removeLane: (laneNodeId: string) => void;
 
@@ -43,12 +45,6 @@ export function useDiagramEditor() {
   return v;
 }
 
-export function DiagramEditorProvider({
-  value,
-  children,
-}: {
-  value: EditorActions;
-  children: React.ReactNode;
-}) {
+export function DiagramEditorProvider({ value, children }: { value: EditorActions; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

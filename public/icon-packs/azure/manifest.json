@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "provider": "azure",
+  "nodes": {
+    "user": { "src": "/icon-packs/azure/icons/users.svg", "alt": "Users" },
+    "cdn": { "src": "/icon-packs/azure/icons/cdn.svg", "alt": "Front Door / CDN" },
+    "waf": { "src": "/icon-packs/azure/icons/waf.svg", "alt": "Web Application Firewall (WAF)" },
+    "api_gateway": { "src": "/icon-packs/azure/icons/api-management.svg", "alt": "API Management" },
+    "auth_oidc": { "src": "/icon-packs/azure/icons/entra-identity.svg", "alt": "Microsoft Entra ID" },
+    "service": { "src": "/icon-packs/azure/icons/app-services.svg", "alt": "App Services" },
+    "lambda": { "src": "/icon-packs/azure/icons/functions.svg", "alt": "Function Apps" },
+    "event_bus": { "src": "/icon-packs/azure/icons/event-grid.svg", "alt": "Event Grid" },
+    "queue": { "src": "/icon-packs/azure/icons/service-bus.svg", "alt": "Service Bus" },
+    "cdc_stream": { "src": "/icon-packs/azure/icons/event-hubs.svg", "alt": "Event Hubs" },
+    "saga": { "src": "/icon-packs/azure/icons/logic-apps.svg", "alt": "Logic Apps" },
+    "sql_db": { "src": "/icon-packs/azure/icons/sql-database.svg", "alt": "SQL Database" },
+    "nosql_db": { "src": "/icon-packs/azure/icons/cosmos-db.svg", "alt": "Azure Cosmos DB" },
+    "object_store": { "src": "/icon-packs/azure/icons/storage-accounts.svg", "alt": "Storage Accounts" },
+    "search": { "src": "/icon-packs/azure/icons/cognitive-search.svg", "alt": "Cognitive Search" },
+    "observability": { "src": "/icon-packs/azure/icons/monitor.svg", "alt": "Azure Monitor" },
+    "metrics": { "src": "/icon-packs/azure/icons/metrics.svg", "alt": "Metrics" },
+    "logging": { "src": "/icon-packs/azure/icons/log-analytics.svg", "alt": "Log Analytics" }
+  }
+}
+

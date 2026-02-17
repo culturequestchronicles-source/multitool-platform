@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
 
 type ToolCardProps = {
   title: string;
@@ -9,7 +8,7 @@ type ToolCardProps = {
   href: string;
   icon?: string;
   badge?: string;
-  requiresLogin?: boolean;
+  requiresLogin?: boolean; // kept for UI text only (no redirect)
 };
 
 export default function ToolCard({
@@ -20,16 +19,9 @@ export default function ToolCard({
   badge,
   requiresLogin = false,
 }: ToolCardProps) {
-  const loginHref = useMemo(() => {
-    const dest = href.startsWith("/") ? href : `/${href}`;
-    return `/login?next=${encodeURIComponent(dest)}`;
-  }, [href]);
-
-  const finalHref = requiresLogin ? loginHref : href;
-
   return (
     <Link
-      href={finalHref}
+      href={href}
       style={{
         display: "block",
         border: "1px solid #e5e7eb",
@@ -73,17 +65,8 @@ export default function ToolCard({
           </div>
 
           <div>
-            <div style={{ fontSize: 16, fontWeight: 950, letterSpacing: -0.2 }}>
-              {title}
-            </div>
-            <div
-              style={{
-                marginTop: 6,
-                fontSize: 13,
-                color: "#64748b",
-                lineHeight: 1.45,
-              }}
-            >
+            <div style={{ fontSize: 16, fontWeight: 950, letterSpacing: -0.2 }}>{title}</div>
+            <div style={{ marginTop: 6, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
               {description}
             </div>
           </div>
@@ -108,16 +91,9 @@ export default function ToolCard({
         ) : null}
       </div>
 
-      <div
-        style={{
-          marginTop: 14,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+      <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontSize: 12, color: "#94a3b8", fontWeight: 800 }}>
-          {requiresLogin ? "Login required →" : "Open tool →"}
+          {requiresLogin ? "Open tool →" : "Open tool →"}
         </div>
         <div style={{ fontSize: 14, color: "#0f172a" }}>→</div>
       </div>

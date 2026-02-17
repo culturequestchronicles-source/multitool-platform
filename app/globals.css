@@ -24,3 +24,40 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* -------------------------------------------------------
+   ReactFlow layering fixes for Swimlanes
+-------------------------------------------------------- */
+
+.react-flow__viewport {
+  position: relative;
+}
+
+/* Overlay behind edges/nodes */
+.swimlane-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0 !important;
+}
+
+/* Edges above overlay */
+.react-flow__edges {
+  position: relative;
+  z-index: 20 !important;
+}
+
+/* Nodes above edges */
+.react-flow__nodes {
+  position: relative;
+  z-index: 30 !important;
+}
+
+.react-flow__handle {
+  z-index: 40 !important;
+}
+
+/* Ensure renderer doesn't clip overlay */
+.react-flow__renderer {
+  overflow: visible !important;
+}

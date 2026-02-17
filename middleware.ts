@@ -1,60 +1,34 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
-  const pathname = req.nextUrl.pathname;
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-  // Always allow these (important for SEO + Next internals)
-  const isAlwaysPublic =
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml" ||
-    pathname.startsWith("/google") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/public");
-
-  if (isAlwaysPublic) return NextResponse.next();
-
-  const res = NextResponse.next();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            res.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Protect diagrams tool + its APIs only
-  const protectedPaths =
-    pathname.startsWith("/tools/diagrams") || pathname.startsWith("/api/diagrams");
-
-  // Allow login + callback
-  const allowPaths =
-    pathname.startsWith("/login") || pathname.startsWith("/auth/callback");
-
-  if (protectedPaths && !allowPaths && !user) {
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
+  // ✅ PUBLIC: allow ALL diagram pages + diagram APIs without auth
+  if (
+    pathname.startsWith("/tools/diagrams") ||
+    pathname.startsWith("/api/diagrams") ||
+    pathname.startsWith("/api/ai/swimlanes") // if you use this for diagrams
+  ) {
+    return NextResponse.next();
   }
 
-  return res;
+  // ✅ PUBLIC: allow auth pages themselves
+  if (pathname.startsWith("/login") || pathname.startsWith("/auth")) {
+    return NextResponse.next();
+  }
+
+  /**
+   * If you previously had auth gating here for other tools, keep it.
+   * If your old middleware forced login for everything, that’s what caused the redirect.
+   *
+   * For now, we do NOT force-login anything here.
+   * (If you need auth for other sections later, we can add it back as a specific allow/deny list.)
+   */
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/tools/diagrams/:path*", "/api/diagrams/:path*", "/login", "/auth/callback"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

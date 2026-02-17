@@ -33,6 +33,12 @@ export default function SystemArchitecturePage() {
               Create Architecture Diagram →
             </Link>
             <Link
+              href="/help/diagrams/system-architecture"
+              className="inline-flex items-center justify-center rounded-2xl border bg-white px-5 py-3 text-sm font-bold text-slate-900 hover:bg-slate-50"
+            >
+              User Guide â†’
+            </Link>
+            <Link
               href="/tools/diagrams"
               className="inline-flex items-center justify-center rounded-2xl border bg-white px-5 py-3 text-sm font-bold text-slate-900 hover:bg-slate-50"
             >

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,8 +10,7 @@ export async function GET(
 ) {
   const { code } = await ctx.params;
 
-  // ✅ IMPORTANT: supabaseServer is a function, must be called
-  const supabase = await supabaseServer(req);
+  const supabase = supabaseServer();
 
   const { data, error } = await supabase
     .from("tiny_urls")

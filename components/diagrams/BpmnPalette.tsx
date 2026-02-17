@@ -22,8 +22,8 @@ export type BpmnPaletteItem = {
     | "loop_end";
   label: string;
   description?: string;
-  color: string; // used as node meta.color (bg)
-  accent?: string; // used for a small dot indicator
+  color: string;
+  accent?: string;
 };
 
 type Props = {
@@ -32,10 +32,7 @@ type Props = {
   onSwimlaneVertical: () => void;
 };
 
-const GROUPS: Array<{
-  title: string;
-  items: BpmnPaletteItem[];
-}> = [
+const GROUPS: Array<{ title: string; items: BpmnPaletteItem[] }> = [
   {
     title: "BPMN Core",
     items: [
@@ -65,10 +62,7 @@ const GROUPS: Array<{
 ];
 
 function pill(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 export default function BpmnPalette({ onAdd, onSwimlaneHorizontal, onSwimlaneVertical }: Props) {
@@ -104,7 +98,7 @@ export default function BpmnPalette({ onAdd, onSwimlaneHorizontal, onSwimlaneVer
             <div className="grid grid-cols-1 gap-2">
               {g.items.map((item) => (
                 <button
-                  key={item.kind}
+                  key={`${g.title}:${item.kind}:${item.label}`}
                   onClick={() => onAdd(item)}
                   className="group flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 hover:shadow-sm hover:bg-gray-50 transition"
                   title={item.description ?? item.label}

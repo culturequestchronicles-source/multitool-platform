@@ -1,114 +1,98 @@
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { supabaseServer } from "@/lib/supabase/server";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { setEditKey, upsertRecent } from "@/lib/diagrams/localRecents";
 
-type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+function mapTypeToDiagramType(type: string | null) {
+  const t = String(type ?? "").trim().toLowerCase();
 
-function first(v: string | string[] | undefined) {
-  if (!v) return undefined;
-  return Array.isArray(v) ? v[0] : v;
-}
-
-/**
- * URL query -> DB enum mapping.
- * Your DB expects:
- *  business_process_flow | swimlane | system_architecture | org_chart | decision_flow
- * (You can extend later as you add schema support)
- */
-function mapTypeToDb(diagramType: string | undefined) {
-  const t = (diagramType ?? "").toLowerCase().trim();
-
-  if (t === "bpmn" || t === "business-process" || t === "business_process_flow") return "business_process_flow";
+  // ✅ normalize variants users might pass
   if (t === "swimlanes" || t === "swimlane") return "swimlane";
-  if (t === "system-architecture" || t === "system_architecture") return "system_architecture";
-  if (t === "org-chart" || t === "org_chart") return "org_chart";
-  if (t === "decision-flow" || t === "decision_flow") return "decision_flow";
+  if (t === "bpmn") return "bpmn";
+  if (t === "flow-chart" || t === "flow_chart") return "flowchart";
+  if (t === "data-architecture" || t === "data_architecture") return "data_architecture";
 
-  // For now, default to BPMN since that’s fully implemented
-  return "business_process_flow";
+  // keep whatever you support server-side
+  return t || "bpmn";
 }
 
-function defaultNameFor(dbType: string) {
-  switch (dbType) {
+function defaultNameFor(type: string) {
+  switch (type) {
     case "swimlane":
-      return "New Swimlanes Diagram";
+      return "Swimlane Diagram";
+    case "bpmn":
+      return "BPMN Diagram";
+    case "erd":
+      return "Entity Relationship Diagram";
+    case "flowchart":
+      return "Flow Chart";
+    case "system-architecture":
     case "system_architecture":
-      return "New System Architecture";
-    case "org_chart":
-      return "New Org Chart";
-    case "decision_flow":
-      return "New Decision Flow";
-    case "business_process_flow":
+      return "System Architecture Diagram";
+    case "data-architecture":
+    case "data_architecture":
+      return "Data Architecture Diagram";
     default:
-      return "New BPMN Diagram";
+      return "Untitled Diagram";
   }
 }
 
-async function getBaseUrl() {
-  // Next.js 16.1.x: headers() is async
-  const h = await headers();
+export default function NewDiagramPage() {
+  const router = useRouter();
+  const search = useSearchParams();
 
-  // Prefer forwarded headers on Vercel / proxies
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  useEffect(() => {
+    let cancelled = false;
 
-  return `${proto}://${host}`;
-}
+    (async () => {
+      const typeParam = search.get("type");
+      const diagram_type = mapTypeToDiagramType(typeParam);
+      const name = defaultNameFor(diagram_type);
 
-export default async function NewDiagramPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const sp = await searchParams;
-  const typeParam = first(sp.type);
-  const nameParam = first(sp.name);
+      try {
+        const res = await fetch("/api/diagrams/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ diagram_type, name }),
+        });
 
-  const baseUrl = await getBaseUrl();
-  const nextDest = `/tools/diagrams/new?type=${encodeURIComponent(typeParam ?? "bpmn")}`;
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
 
-  const supabase = await supabaseServer();
+        if (!res.ok || !data?.ok || !data?.id) {
+          const parts: string[] = [];
+          if (data?.error) parts.push(String(data.error));
+          if (data?.cause) parts.push(`Cause: ${String(data.cause)}`);
+          if (data?.code) parts.push(`Code: ${String(data.code)}`);
+          if (data?.details) parts.push(`Details: ${String(data.details)}`);
+          if (data?.hint) parts.push(`Hint: ${String(data.hint)}`);
+          alert(parts.filter(Boolean).join("\n") || "Failed to create diagram");
+          router.replace("/tools/diagrams");
+          return;
+        }
 
-  // ✅ Auth gate: if not logged in, redirect to login with next
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) {
-    redirect(`/login?next=${encodeURIComponent(nextDest)}`);
-  }
+        const id = String(data.id);
 
-  const dbType = mapTypeToDb(typeParam);
-  const name = (nameParam && nameParam.trim().length ? nameParam.trim() : defaultNameFor(dbType)).slice(0, 120);
+        // ✅ store edit key so editor is NOT read-only
+        const editKey = data?.editKey ?? data?.edit_key ?? null;
+        if (editKey) setEditKey(id, String(editKey));
 
-  // ✅ Create diagram directly (no API call needed)
-  const { data: created, error } = await supabase
-    .from("diagrams")
-    .insert({
-      owner_id: auth.user.id,
-      name,
-      diagram_type: dbType,
-      layout: "freeform",
-      standards_profile: {},
-      current_snapshot: {}, // DiagramEditorClient will initialize default snapshot if empty
-    })
-    .select("id")
-    .single();
+        // ✅ add to local recents so /tools/diagrams shows it
+        upsertRecent({ id, name, updatedAt: Date.now() });
 
-  if (error || !created?.id) {
-    // Fail safely (show text, don't crash build)
-    return (
-      <div className="p-6">
-        <div className="text-sm font-semibold text-red-700">Failed to create diagram</div>
-        <div className="mt-2 text-xs text-gray-600">
-          {error?.message ?? "Unknown error"}
-        </div>
-        <div className="mt-4 text-xs text-gray-500">
-          Base URL detected: {baseUrl}
-        </div>
-      </div>
-    );
-  }
+        router.replace(`/tools/diagrams/${encodeURIComponent(id)}`);
+      } catch (e: any) {
+        if (cancelled) return;
+        alert(e?.message ?? "Failed to create diagram");
+        router.replace("/tools/diagrams");
+      }
+    })();
 
-  // ✅ Redirect to the actual UUID page (fixes invalid uuid:new)
-  redirect(`/tools/diagrams/${created.id}`);
+    return () => {
+      cancelled = true;
+    };
+  }, [router, search]);
+
+  return <div className="p-6 text-sm text-gray-700">Creating a new diagram…</div>;
 }

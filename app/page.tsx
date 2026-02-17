@@ -1,3 +1,4 @@
+// app/page.tsx
 import ToolCard from "@/components/ToolCard";
 import ToolSection from "@/components/home/ToolSection";
 import Link from "next/link";
@@ -24,8 +25,6 @@ export const metadata: Metadata = {
     "Flowchart",
     "ER Diagram",
     "Data Architecture",
-    "Data Model",
-    "Decision Flow",
   ],
   openGraph: {
     title: "Jhatpat — Web Utilities + Diagramming (PDF, Converters, Diff, Generators)",
@@ -70,8 +69,6 @@ const TAGS = [
   "#OrgChart",
   "#SystemArchitecture",
   "#DataArchitecture",
-  "#DataModel",
-  "#DecisionFlow",
 ];
 
 export default function HomePage() {
@@ -186,11 +183,11 @@ export default function HomePage() {
             <div style={{ maxWidth: 720 }}>
               <div style={diagramTitle}>Create, collaborate, export.</div>
               <div style={diagramSub}>
-                Diagramming tools are saved to your account (magic link login). Choose a template and start building.
+                Public mode: no accounts. Your recent diagrams are stored in this browser (local device).
               </div>
             </div>
 
-            {/* ✅ HIDDEN: Open Diagrams Hub button */}
+            {/* Optional hub button (keep hidden if you want) */}
             {false && (
               <a href="/tools/diagrams" style={diagramHubBtn}>
                 Open Diagrams Hub →
@@ -205,7 +202,6 @@ export default function HomePage() {
               href="/tools/diagrams/new?type=bpmn"
               icon="🧠"
               badge="Pro"
-              requiresLogin
             />
             <ToolCard
               title="Swimlanes"
@@ -213,28 +209,18 @@ export default function HomePage() {
               href="/tools/diagrams/new?type=swimlanes"
               icon="🏊"
               badge="AI"
-              requiresLogin
             />
             <ToolCard
               title="System Architecture"
               description="Components, services, APIs, flows & integrations"
               href="/tools/diagrams/new?type=system-architecture"
               icon="🏗️"
-              requiresLogin
             />
             <ToolCard
               title="Org Chart"
               description="Teams, reporting lines, roles & responsibilities"
               href="/tools/diagrams/new?type=org-chart"
               icon="👥"
-              requiresLogin
-            />
-            <ToolCard
-              title="Decision Flow"
-              description="If/else logic, policies, approvals & branching"
-              href="/tools/diagrams/new?type=decision-flow"
-              icon="🧭"
-              requiresLogin
             />
             <ToolCard
               title="Entity Relationship"
@@ -242,7 +228,6 @@ export default function HomePage() {
               href="/tools/diagrams/new?type=erd"
               icon="🧬"
               badge="Data"
-              requiresLogin
             />
             <ToolCard
               title="Data Architecture"
@@ -250,22 +235,12 @@ export default function HomePage() {
               href="/tools/diagrams/new?type=data-architecture"
               icon="🗄️"
               badge="Data"
-              requiresLogin
             />
             <ToolCard
               title="Flow Chart"
               description="Clear step-by-step flows for any process"
               href="/tools/diagrams/new?type=flowchart"
               icon="🔀"
-              requiresLogin
-            />
-            <ToolCard
-              title="Data Model"
-              description="Conceptual → logical → physical modeling"
-              href="/tools/diagrams/new?type=data-model"
-              icon="📐"
-              badge="Data"
-              requiresLogin
             />
           </div>
 
@@ -280,7 +255,6 @@ export default function HomePage() {
               </div>
 
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                {/* ✅ HIDDEN: Start BPMN button */}
                 {false && (
                   <a href="/tools/diagrams/new?type=bpmn" style={calloutBtnDark}>
                     Start BPMN →
@@ -289,6 +263,9 @@ export default function HomePage() {
 
                 <a href="/tools/diagrams/new?type=swimlanes" style={calloutBtnLight}>
                   Start Swimlanes →
+                </a>
+                <a href="/help" style={calloutBtnLight}>
+                  Guides & FAQ →
                 </a>
               </div>
             </div>

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "provider": "azure",
+  "nodes": {
+    "api_gateway": { "src": "/icon-packs/azure/icons/api-management.svg", "alt": "API Management" },
+    "lambda": { "src": "/icon-packs/azure/icons/functions.svg", "alt": "Azure Functions" },
+    "sql_db": { "src": "/icon-packs/azure/icons/sql-database.svg", "alt": "Azure SQL Database" }
+  }
+}
+

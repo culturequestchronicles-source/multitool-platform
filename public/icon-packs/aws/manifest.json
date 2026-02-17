@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "provider": "aws",
+  "nodes": {
+    "user": { "src": "/icon-packs/aws/icons/users.svg", "alt": "Users" },
+    "cdn": { "src": "/icon-packs/aws/icons/cloudfront.svg", "alt": "Amazon CloudFront" },
+    "waf": { "src": "/icon-packs/aws/icons/waf.svg", "alt": "AWS WAF" },
+    "api_gateway": { "src": "/icon-packs/aws/icons/api-gateway.svg", "alt": "Amazon API Gateway" },
+    "auth_oidc": { "src": "/icon-packs/aws/icons/cognito.svg", "alt": "Amazon Cognito" },
+    "service": { "src": "/icon-packs/aws/icons/ecs.svg", "alt": "Amazon ECS" },
+    "lambda": { "src": "/icon-packs/aws/icons/lambda.svg", "alt": "AWS Lambda" },
+    "event_bus": { "src": "/icon-packs/aws/icons/eventbridge.svg", "alt": "Amazon EventBridge" },
+    "queue": { "src": "/icon-packs/aws/icons/sqs.svg", "alt": "Amazon SQS" },
+    "cdc_stream": { "src": "/icon-packs/aws/icons/kinesis-data-streams.svg", "alt": "Amazon Kinesis Data Streams" },
+    "saga": { "src": "/icon-packs/aws/icons/step-functions.svg", "alt": "AWS Step Functions" },
+    "sql_db": { "src": "/icon-packs/aws/icons/rds.svg", "alt": "Amazon RDS" },
+    "nosql_db": { "src": "/icon-packs/aws/icons/dynamodb.svg", "alt": "Amazon DynamoDB" },
+    "object_store": { "src": "/icon-packs/aws/icons/s3.svg", "alt": "Amazon S3" },
+    "search": { "src": "/icon-packs/aws/icons/opensearch.svg", "alt": "Amazon OpenSearch Service" },
+    "observability": { "src": "/icon-packs/aws/icons/cloudwatch.svg", "alt": "Amazon CloudWatch" },
+    "metrics": { "src": "/icon-packs/aws/icons/cloudwatch.svg", "alt": "Amazon CloudWatch" },
+    "logging": { "src": "/icon-packs/aws/icons/cloudwatch.svg", "alt": "Amazon CloudWatch" }
+  }
+}
+

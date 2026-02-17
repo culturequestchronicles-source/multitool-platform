@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "provider": "gcp",
+  "nodes": {
+    "user": { "src": "/icon-packs/gcp/icons/web-mobile.svg", "alt": "Users" },
+    "web": { "src": "/icon-packs/gcp/icons/web-mobile.svg", "alt": "Web" },
+    "mobile": { "src": "/icon-packs/gcp/icons/web-mobile.svg", "alt": "Mobile" },
+    "cdn": { "src": "/icon-packs/gcp/icons/integration.svg", "alt": "Delivery / Networking" },
+    "waf": { "src": "/icon-packs/gcp/icons/security.svg", "alt": "Security" },
+    "api_gateway": { "src": "/icon-packs/gcp/icons/integration.svg", "alt": "API / Integration" },
+    "auth_oidc": { "src": "/icon-packs/gcp/icons/security.svg", "alt": "Identity" },
+    "service": { "src": "/icon-packs/gcp/icons/compute.svg", "alt": "Compute" },
+    "lambda": { "src": "/icon-packs/gcp/icons/serverless.svg", "alt": "Serverless" },
+    "event_bus": { "src": "/icon-packs/gcp/icons/integration.svg", "alt": "Messaging / Integration" },
+    "queue": { "src": "/icon-packs/gcp/icons/integration.svg", "alt": "Queue / Topic" },
+    "cdc_stream": { "src": "/icon-packs/gcp/icons/integration.svg", "alt": "Streaming" },
+    "saga": { "src": "/icon-packs/gcp/icons/operations.svg", "alt": "Orchestration" },
+    "sql_db": { "src": "/icon-packs/gcp/icons/databases.svg", "alt": "SQL" },
+    "nosql_db": { "src": "/icon-packs/gcp/icons/databases.svg", "alt": "NoSQL" },
+    "object_store": { "src": "/icon-packs/gcp/icons/storage.svg", "alt": "Object Storage" },
+    "search": { "src": "/icon-packs/gcp/icons/databases.svg", "alt": "Search" },
+    "observability": { "src": "/icon-packs/gcp/icons/observability.svg", "alt": "Observability" },
+    "metrics": { "src": "/icon-packs/gcp/icons/observability.svg", "alt": "Metrics" },
+    "logging": { "src": "/icon-packs/gcp/icons/observability.svg", "alt": "Logging" }
+  }
+}
+

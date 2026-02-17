@@ -1,11 +1,13 @@
+// app/tools/diagrams/NewDiagramButton.tsx
 "use client";
 
 import { useState } from "react";
+import { setEditKey, upsertRecent } from "@/lib/diagrams/localRecents";
 
 const DIAGRAM_TYPE = "business_process_flow";
 const DIAGRAM_LABEL = "Business Process (BPMN)";
 
-export default function NewDiagramButton() {
+export default function NewDiagramButton({ onCreated }: { onCreated?: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -13,20 +15,28 @@ export default function NewDiagramButton() {
   const create = async () => {
     try {
       setBusy(true);
+
       const res = await fetch("/api/diagrams/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name || "Untitled Diagram", diagram_type: DIAGRAM_TYPE }),
       });
 
-      // Route redirects on success
-      if (res.redirected) {
-        window.location.href = res.url;
+      const data = await res.json().catch(() => null);
+
+      if (!data?.id || !data?.editKey) {
+        alert(data?.error ?? "Failed to create diagram");
         return;
       }
 
-      const data = await res.json().catch(() => ({}));
-      alert(data?.error ?? "Failed to create diagram");
+      // ✅ store secret edit key (for autosave) + recent list
+      setEditKey(data.id, data.editKey);
+      upsertRecent({ id: data.id, name: data.name ?? name ?? "Untitled Diagram", updatedAt: Date.now() });
+
+      onCreated?.();
+
+      // go to editor
+      window.location.href = `/tools/diagrams/${data.id}`;
     } finally {
       setBusy(false);
     }
@@ -34,10 +44,7 @@ export default function NewDiagramButton() {
 
   return (
     <div className="relative">
-      <button
-        className="rounded-xl bg-black px-5 py-3 text-white"
-        onClick={() => setOpen(true)}
-      >
+      <button className="rounded-xl bg-black px-5 py-3 text-white" onClick={() => setOpen(true)}>
         New Diagram
       </button>
 
@@ -78,7 +85,7 @@ export default function NewDiagramButton() {
               </button>
 
               <p className="text-xs text-gray-500">
-                BPMN includes professional colors and a standards-aware palette.
+                No login required. Your edit access is stored only in this browser.
               </p>
             </div>
           </div>

@@ -7,7 +7,7 @@ export default function BpmnLanding() {
     <div className="p-6">
       <h1 className="text-xl font-semibold">BPMN Diagramming</h1>
       <p className="mt-2 text-sm text-gray-600">
-        Create BPMN diagrams with subprocess drilldown and swimlanes.
+        Create BPMN diagrams with subprocess drilldown.
       </p>
 
       <div className="mt-4">

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "provider": "gcp",
+  "nodes": {
+    "api_gateway": { "src": "/icon-packs/gcp/icons/api-gateway.svg", "alt": "API Gateway" },
+    "lambda": { "src": "/icon-packs/gcp/icons/cloud-functions.svg", "alt": "Cloud Functions" },
+    "sql_db": { "src": "/icon-packs/gcp/icons/cloud-sql.svg", "alt": "Cloud SQL" }
+  }
+}
+

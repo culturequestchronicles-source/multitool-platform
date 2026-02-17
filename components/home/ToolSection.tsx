@@ -1,3 +1,4 @@
+// components/home/ToolSection.tsx
 import React from "react";
 
 export default function ToolSection({
@@ -24,10 +25,18 @@ export default function ToolSection({
 
   return (
     <div style={{ marginTop: 52 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 18,
+        }}
+      >
         <div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <h2 style={{ fontSize: 30, fontWeight: 950, margin: 0 }}>{title}</h2>
+
             {kicker ? (
               <span
                 style={{
@@ -45,6 +54,7 @@ export default function ToolSection({
               </span>
             ) : null}
           </div>
+
           <p style={{ color: "#6b7280", marginTop: 8 }}>{subtitle}</p>
         </div>
       </div>

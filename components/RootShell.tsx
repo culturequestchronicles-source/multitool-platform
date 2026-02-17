@@ -1,25 +1,22 @@
+// components/RootShell.tsx
 "use client";
 
 import React, { useMemo } from "react";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { Analytics } from "@vercel/analytics/next";
-import SessionTimeoutClient from "@/components/SessionTimeoutClient";
 
 export default function RootShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Hide marketing footer on diagram editor pages (prevents overlap)
   const hideFooter = useMemo(() => {
     return pathname?.startsWith("/tools/diagrams/");
   }, [pathname]);
 
-  // Optional: you can also simplify navbar in editor pages if you want later
   const isDiagramEditor = pathname?.startsWith("/tools/diagrams/");
 
   return (
     <>
-      {/* Google AdSense Script (kept) */}
       <Script
         id="adsense-init"
         strategy="afterInteractive"
@@ -27,9 +24,6 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
       />
 
-      <SessionTimeoutClient />
-
-      {/* Navigation */}
       <nav
         style={{
           background: "#ffffff",
@@ -64,48 +58,24 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
           </a>
 
           <div style={{ display: "flex", gap: "18px", alignItems: "center" }}>
-            <a
-              href="/tools/generators/tinyurl"
-              style={{
-                textDecoration: "none",
-                color: "#2563eb",
-                fontWeight: 700,
-                fontSize: "14px",
-              }}
-            >
+            <a href="/tools/generators/tinyurl" style={{ textDecoration: "none", color: "#2563eb", fontWeight: 700, fontSize: "14px" }}>
               Shorten URL
             </a>
-            <a
-              href="/tools/generators/dummy-data"
-              style={{
-                textDecoration: "none",
-                color: "#2563eb",
-                fontWeight: 700,
-                fontSize: "14px",
-              }}
-            >
+            <a href="/tools/generators/dummy-data" style={{ textDecoration: "none", color: "#2563eb", fontWeight: 700, fontSize: "14px" }}>
               Generate Data
             </a>
             <div style={{ width: 1, height: 20, background: "#e5e7eb" }} />
-            <a
-              href="/#tools"
-              style={{
-                textDecoration: "none",
-                color: "#4b5563",
-                fontWeight: 500,
-                fontSize: "14px",
-              }}
-            >
+            <a href="/#tools" style={{ textDecoration: "none", color: "#4b5563", fontWeight: 500, fontSize: "14px" }}>
               All Tools
+            </a>
+            <a href="/help" style={{ textDecoration: "none", color: "#4b5563", fontWeight: 500, fontSize: "14px" }}>
+              Help
             </a>
           </div>
         </div>
       </nav>
 
-      {/* Main: diagrams need a full-height, overflow-safe container */}
-      <main className={isDiagramEditor ? "h-[calc(100dvh-56px)] overflow-hidden" : ""}>
-        {children}
-      </main>
+      <main className={isDiagramEditor ? "h-[calc(100dvh-56px)] overflow-hidden" : ""}>{children}</main>
 
       <Analytics />
 
@@ -131,9 +101,7 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
               }}
             >
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 12 }}>
-                  🚀 Rapid Generation
-                </h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 12 }}>🚀 Rapid Generation</h3>
                 <p>
                   Create <strong>TinyURLs</strong> and <strong>Realistic Dummy Datasets</strong> in seconds.
                   Optimized for developer workflows and testing environments.
@@ -141,9 +109,7 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 12 }}>
-                  🔒 Privacy First
-                </h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 12 }}>🔒 Privacy First</h3>
                 <p>
                   Whether you're merging PDFs or generating passwords, your data never leaves your machine.
                   We use client-side processing for total security.

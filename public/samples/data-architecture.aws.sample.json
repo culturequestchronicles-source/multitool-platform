@@ -1,0 +1,448 @@
+{
+  "diagram_type": "data_architecture",
+  "title": "Data Architecture Diagram (AWS sample)",
+  "meta": {
+    "themeId": "default",
+    "layoutMode": "free",
+    "dataArchitecture": {
+      "provider": "aws",
+      "direction": "LR"
+    }
+  },
+  "nodes": [
+    {
+      "id": "da_lakehouse",
+      "type": "data_arch_container",
+      "position": { "x": 200, "y": 140 },
+      "data": {
+        "kind": "data_arch_container",
+        "label": "CPE Lakehouse",
+        "containerStyle": "lakehouse",
+        "size": { "w": 1200, "h": 620 },
+        "meta": { "border": "#111827" }
+      },
+      "style": { "zIndex": 5 }
+    },
+    {
+      "id": "da_domain",
+      "type": "data_arch_container",
+      "position": { "x": 1480, "y": 140 },
+      "data": {
+        "kind": "data_arch_container",
+        "label": "Data Usage & Integrations",
+        "containerStyle": "domain",
+        "size": { "w": 780, "h": 620 },
+        "meta": { "border": "#111827" }
+      },
+      "style": { "zIndex": 5 }
+    },
+
+    {
+      "id": "da_files",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 60, "y": 120 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "file_source",
+        "provider": "aws",
+        "layer": "sources",
+        "label": "Files",
+        "subtitle": "CSV/JSON/Logs",
+        "size": { "w": 240, "h": 104 },
+        "meta": {
+          "color": "rgba(241,245,249,0.95)",
+          "border": "#334155",
+          "frequency": "batch",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+    {
+      "id": "da_oltp",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 60, "y": 250 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "sql_db",
+        "provider": "aws",
+        "layer": "sources",
+        "label": "OLTP DB",
+        "subtitle": "Orders / Billing",
+        "size": { "w": 240, "h": 104 },
+        "meta": {
+          "color": "rgba(241,245,249,0.95)",
+          "border": "#334155",
+          "iconSrc": "/icon-packs/aws/icons/rds.svg",
+          "frequency": "near_real_time",
+          "security": "confidential"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+    {
+      "id": "da_partner_api",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 60, "y": 380 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "api_source",
+        "provider": "aws",
+        "layer": "sources",
+        "label": "Partner API",
+        "subtitle": "REST/GraphQL",
+        "size": { "w": 240, "h": 104 },
+        "meta": {
+          "color": "rgba(241,245,249,0.95)",
+          "border": "#334155",
+          "frequency": "near_real_time",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+
+    {
+      "id": "da_event_stream",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 340, "y": 200 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "event_stream",
+        "provider": "aws",
+        "layer": "ingestion",
+        "label": "Event Stream",
+        "subtitle": "Kinesis / Event Hubs",
+        "size": { "w": 270, "h": 104 },
+        "meta": {
+          "color": "rgba(224,242,254,0.92)",
+          "border": "#0284c7",
+          "iconSrc": "/icon-packs/aws/icons/kinesis-data-streams.svg",
+          "frequency": "stream",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+
+    {
+      "id": "da_etl",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 650, "y": 170 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "etl",
+        "provider": "aws",
+        "layer": "processing",
+        "label": "ETL / Orchestration",
+        "subtitle": "Pipelines",
+        "size": { "w": 300, "h": 104 },
+        "meta": {
+          "color": "rgba(237,233,254,0.92)",
+          "border": "#7c3aed",
+          "frequency": "batch",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+    {
+      "id": "da_transform",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 650, "y": 310 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "transform",
+        "provider": "aws",
+        "layer": "processing",
+        "label": "Transform",
+        "subtitle": "dbt / Spark / SQL",
+        "size": { "w": 300, "h": 104 },
+        "meta": {
+          "color": "rgba(237,233,254,0.92)",
+          "border": "#7c3aed",
+          "iconSrc": "/icon-packs/aws/icons/lambda.svg",
+          "frequency": "batch",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+
+    {
+      "id": "da_data_lake",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 990, "y": 190 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "object_store",
+        "provider": "aws",
+        "layer": "storage",
+        "label": "Data Lake",
+        "subtitle": "Raw / Bronze",
+        "size": { "w": 260, "h": 104 },
+        "meta": {
+          "color": "rgba(220,252,231,0.92)",
+          "border": "#16a34a",
+          "iconSrc": "/icon-packs/aws/icons/s3.svg",
+          "frequency": "batch",
+          "security": "confidential"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+    {
+      "id": "da_warehouse",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 990, "y": 320 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "warehouse",
+        "provider": "aws",
+        "layer": "storage",
+        "label": "Warehouse",
+        "subtitle": "Curated / Gold",
+        "size": { "w": 260, "h": 104 },
+        "meta": {
+          "color": "rgba(220,252,231,0.92)",
+          "border": "#16a34a",
+          "frequency": "batch",
+          "security": "confidential"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+
+    {
+      "id": "da_catalog",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 360, "y": 500 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "catalog",
+        "provider": "aws",
+        "layer": "governance",
+        "label": "Data Catalog",
+        "subtitle": "Lineage / discovery",
+        "size": { "w": 260, "h": 104 },
+        "meta": {
+          "color": "rgba(224,231,255,0.92)",
+          "border": "#4f46e5",
+          "frequency": "batch",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+    {
+      "id": "da_quality",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 650, "y": 500 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "quality",
+        "provider": "aws",
+        "layer": "governance",
+        "label": "Data Quality",
+        "subtitle": "Checks / alerts",
+        "size": { "w": 260, "h": 104 },
+        "meta": {
+          "color": "rgba(224,231,255,0.92)",
+          "border": "#4f46e5",
+          "frequency": "batch",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+    {
+      "id": "da_security",
+      "type": "data_arch_object",
+      "parentId": "da_lakehouse",
+      "extent": "parent",
+      "position": { "x": 940, "y": 500 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "security",
+        "provider": "aws",
+        "layer": "security",
+        "label": "Security Policies",
+        "subtitle": "RBAC / masking",
+        "size": { "w": 300, "h": 104 },
+        "meta": {
+          "color": "rgba(254,226,226,0.92)",
+          "border": "#ef4444",
+          "frequency": "batch",
+          "security": "restricted"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+
+    {
+      "id": "da_bi",
+      "type": "data_arch_object",
+      "parentId": "da_domain",
+      "extent": "parent",
+      "position": { "x": 120, "y": 180 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "bi",
+        "provider": "aws",
+        "layer": "analytics",
+        "label": "BI / Dashboards",
+        "subtitle": "Looker / PowerBI",
+        "size": { "w": 280, "h": 104 },
+        "meta": {
+          "color": "rgba(255,237,213,0.92)",
+          "border": "#f97316",
+          "frequency": "near_real_time",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    },
+    {
+      "id": "da_ml",
+      "type": "data_arch_object",
+      "parentId": "da_domain",
+      "extent": "parent",
+      "position": { "x": 120, "y": 330 },
+      "data": {
+        "kind": "data_arch_object",
+        "objectType": "ml",
+        "provider": "aws",
+        "layer": "analytics",
+        "label": "ML / Predictions",
+        "subtitle": "Training & inference",
+        "size": { "w": 280, "h": 104 },
+        "meta": {
+          "color": "rgba(255,237,213,0.92)",
+          "border": "#f97316",
+          "frequency": "batch",
+          "security": "internal"
+        }
+      },
+      "style": { "zIndex": 30 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_files_stream",
+      "type": "labeled",
+      "source": "da_files",
+      "target": "da_event_stream",
+      "data": { "label": "ingest" },
+      "style": { "strokeWidth": 2, "stroke": "#334155" }
+    },
+    {
+      "id": "e_db_stream",
+      "type": "labeled",
+      "source": "da_oltp",
+      "target": "da_event_stream",
+      "data": { "label": "cdc", "async": true },
+      "style": { "strokeWidth": 2, "stroke": "#334155", "strokeDasharray": "6 4" }
+    },
+    {
+      "id": "e_api_stream",
+      "type": "labeled",
+      "source": "da_partner_api",
+      "target": "da_event_stream",
+      "data": { "label": "events", "async": true },
+      "style": { "strokeWidth": 2, "stroke": "#334155", "strokeDasharray": "6 4" }
+    },
+    {
+      "id": "e_stream_etl",
+      "type": "labeled",
+      "source": "da_event_stream",
+      "target": "da_etl",
+      "data": { "label": "buffer" },
+      "style": { "strokeWidth": 2, "stroke": "#334155" }
+    },
+    {
+      "id": "e_etl_transform",
+      "type": "labeled",
+      "source": "da_etl",
+      "target": "da_transform",
+      "data": { "label": "batch" },
+      "style": { "strokeWidth": 2, "stroke": "#334155" }
+    },
+    {
+      "id": "e_transform_lake",
+      "type": "labeled",
+      "source": "da_transform",
+      "target": "da_data_lake",
+      "data": { "label": "write" },
+      "style": { "strokeWidth": 2, "stroke": "#334155" }
+    },
+    {
+      "id": "e_lake_wh",
+      "type": "labeled",
+      "source": "da_data_lake",
+      "target": "da_warehouse",
+      "data": { "label": "curate" },
+      "style": { "strokeWidth": 2, "stroke": "#334155" }
+    },
+    {
+      "id": "e_wh_bi",
+      "type": "labeled",
+      "source": "da_warehouse",
+      "target": "da_bi",
+      "data": { "label": "serve" },
+      "style": { "strokeWidth": 2, "stroke": "#334155" }
+    },
+    {
+      "id": "e_wh_ml",
+      "type": "labeled",
+      "source": "da_warehouse",
+      "target": "da_ml",
+      "data": { "label": "features" },
+      "style": { "strokeWidth": 2, "stroke": "#334155" }
+    },
+    {
+      "id": "e_catalog_wh",
+      "type": "labeled",
+      "source": "da_catalog",
+      "target": "da_warehouse",
+      "data": { "label": "lineage", "async": true },
+      "style": { "strokeWidth": 2, "stroke": "#334155", "strokeDasharray": "4 5" }
+    },
+    {
+      "id": "e_quality_wh",
+      "type": "labeled",
+      "source": "da_quality",
+      "target": "da_warehouse",
+      "data": { "label": "checks", "async": true },
+      "style": { "strokeWidth": 2, "stroke": "#334155", "strokeDasharray": "4 5" }
+    },
+    {
+      "id": "e_security_wh",
+      "type": "labeled",
+      "source": "da_security",
+      "target": "da_warehouse",
+      "data": { "label": "policies", "async": true },
+      "style": { "strokeWidth": 2, "stroke": "#334155", "strokeDasharray": "4 5" }
+    }
+  ]
+}
+

@@ -14,7 +14,20 @@ export type SwimlaneNodeData = {
   dividerPositions?: number[];
   locked?: boolean;
   theme?: DiagramTheme;
+  laneHeaderColors?: string[];
 };
+
+export const SWIMLANE_METRICS = {
+  headerH: 54,
+
+  // horizontal layout: lane names on LEFT column
+  laneNameColHorizontal: 170,
+
+  // vertical layout: lane names on TOP row (NOT left column)
+  laneHeaderRowHVertical: 44,
+
+  pad: 28,
+} as const;
 
 function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -35,16 +48,21 @@ export function createOrUpdateSwimlaneNode(opts: {
 }) {
   const id = opts.existingId ?? `swimlane_${uid()}`;
   const origin = opts.origin ?? { x: 120, y: 120 };
-
   const laneCount = Math.max(1, opts.lanes.length);
+
+  const headerH = SWIMLANE_METRICS.headerH;
 
   const width =
     opts.width ??
-    (opts.orientation === "horizontal" ? 1100 : Math.max(700, laneCount * 240));
+    (opts.orientation === "horizontal"
+      ? 1100
+      : Math.max(760, laneCount * 220)); // vertical grows by columns
 
   const height =
     opts.height ??
-    (opts.orientation === "horizontal" ? Math.max(520, laneCount * 170) : 700);
+    (opts.orientation === "horizontal"
+      ? Math.max(560, headerH + laneCount * 170)
+      : 720);
 
   const locked = Boolean(opts.locked);
 
@@ -66,7 +84,13 @@ export function createOrUpdateSwimlaneNode(opts: {
       locked,
       theme: opts.theme,
     } satisfies SwimlaneNodeData,
-    style: { width, height, zIndex: 0 },
+    style: {
+      width,
+      height,
+      background: "transparent",
+      border: "none",
+      zIndex: 0,
+    },
   };
 
   return node;
@@ -87,81 +111,129 @@ export function getSwimlaneContainer(nodes: Node[]) {
   return nodes.find((n) => (n.data as any)?.kind === "swimlane") ?? null;
 }
 
+export function getLaneBandRect(laneNode: Node, laneIndex: number) {
+  const data = laneNode.data as SwimlaneNodeData;
+  const r = rect(laneNode);
+
+  const headerH = SWIMLANE_METRICS.headerH;
+
+  const count = Math.max(1, data.lanes.length);
+
+  if (data.orientation === "horizontal") {
+    const laneNameCol = SWIMLANE_METRICS.laneNameColHorizontal;
+
+    const contentW = Math.max(1, r.w - laneNameCol);
+    const contentH = Math.max(1, r.h - headerH);
+    const bandH = contentH / count;
+
+    const top = r.y + headerH + bandH * laneIndex;
+    return { x: r.x + laneNameCol, y: top, w: contentW, h: bandH, orientation: "horizontal" as const };
+  } else {
+    // ✅ vertical: lane names on TOP row under header (no left col)
+    const laneHeaderRowH = SWIMLANE_METRICS.laneHeaderRowHVertical;
+
+    const contentW = Math.max(1, r.w);
+    const contentH = Math.max(1, r.h - headerH - laneHeaderRowH);
+    const bandW = contentW / count;
+
+    const left = r.x + bandW * laneIndex;
+    return { x: left, y: r.y + headerH + laneHeaderRowH, w: bandW, h: contentH, orientation: "vertical" as const };
+  }
+}
+
 export function findLaneAtPoint(nodes: Node[], x: number, y: number) {
   const laneNode = getSwimlaneContainer(nodes);
   if (!laneNode) return null;
 
   const data = laneNode.data as SwimlaneNodeData;
   const r = rect(laneNode);
+
   if (!pointIn(x, y, r)) return null;
+
+  const headerH = SWIMLANE_METRICS.headerH;
+
+  // never count header itself as lanes
+  if (y < r.y + headerH) return null;
 
   const count = Math.max(1, data.lanes.length);
 
-  const idx =
-    data.orientation === "horizontal"
-      ? Math.min(count - 1, Math.max(0, Math.floor(((y - r.y) / r.h) * count)))
-      : Math.min(count - 1, Math.max(0, Math.floor(((x - r.x) / r.w) * count)));
+  if (data.orientation === "horizontal") {
+    const laneNameCol = SWIMLANE_METRICS.laneNameColHorizontal;
 
-  return { laneNode, laneIndex: idx };
+    // exclude lane-name column
+    if (x < r.x + laneNameCol) return null;
+
+    const contentW = Math.max(1, r.w - laneNameCol);
+    const contentH = Math.max(1, r.h - headerH);
+
+    const cx = x - (r.x + laneNameCol);
+    const cy = y - (r.y + headerH);
+
+    const idx = Math.min(count - 1, Math.max(0, Math.floor((cy / contentH) * count)));
+    if (cx < 0 || cx > contentW || cy < 0 || cy > contentH) return null;
+
+    return { laneNode, laneIndex: idx };
+  } else {
+    // ✅ vertical: exclude lane header row under header
+    const laneHeaderRowH = SWIMLANE_METRICS.laneHeaderRowHVertical;
+    if (y < r.y + headerH + laneHeaderRowH) return null;
+
+    const contentW = Math.max(1, r.w);
+    const contentH = Math.max(1, r.h - headerH - laneHeaderRowH);
+
+    const cx = x - r.x;
+    const cy = y - (r.y + headerH + laneHeaderRowH);
+
+    const idx = Math.min(count - 1, Math.max(0, Math.floor((cx / contentW) * count)));
+    if (cx < 0 || cx > contentW || cy < 0 || cy > contentH) return null;
+
+    return { laneNode, laneIndex: idx };
+  }
+}
+
+export function clampAbsToLane(opts: {
+  laneNode: Node;
+  laneIndex: number;
+  abs: { x: number; y: number };
+  nodeSize: { w: number; h: number };
+}) {
+  const pad = SWIMLANE_METRICS.pad;
+  const band = getLaneBandRect(opts.laneNode, opts.laneIndex);
+
+  const minX = band.x + pad;
+  const maxX = band.x + band.w - opts.nodeSize.w - pad;
+  const minY = band.y + pad;
+  const maxY = band.y + band.h - opts.nodeSize.h - pad;
+
+  return {
+    x: Math.max(minX, Math.min(opts.abs.x, maxX)),
+    y: Math.max(minY, Math.min(opts.abs.y, maxY)),
+  };
 }
 
 export function snapNodeIntoLane(opts: { dragged: Node; laneNode: Node; laneIndex: number }) {
-  const laneRect = rect(opts.laneNode);
-  const laneData = opts.laneNode.data as SwimlaneNodeData;
+  const abs = (opts.dragged as any).positionAbsolute ?? opts.dragged.position ?? { x: 0, y: 0 };
 
-  const count = Math.max(1, laneData.lanes.length);
-  const pad = 28;
+  const nodeW =
+    (opts.dragged as any)?.data?.size?.w ??
+    (opts.dragged as any)?.width ??
+    (opts.dragged as any)?.measured?.width ??
+    170;
 
-  const nodeW = (opts.dragged as any)?.width ?? 180;
-  const nodeH = (opts.dragged as any)?.height ?? 100;
+  const nodeH =
+    (opts.dragged as any)?.data?.size?.h ??
+    (opts.dragged as any)?.height ??
+    (opts.dragged as any)?.measured?.height ??
+    70;
 
-  let x = opts.dragged.position.x;
-  let y = opts.dragged.position.y;
+  const clamped = clampAbsToLane({
+    laneNode: opts.laneNode,
+    laneIndex: opts.laneIndex,
+    abs: { x: abs.x, y: abs.y },
+    nodeSize: { w: nodeW, h: nodeH },
+  });
 
-  if (laneData.orientation === "horizontal") {
-    const bandH = laneRect.h / count;
-    const bandTop = laneRect.y + bandH * opts.laneIndex;
-    const bandCenter = bandTop + bandH / 2;
-    y = bandCenter - nodeH / 2;
-    x = Math.max(laneRect.x + pad, Math.min(x, laneRect.x + laneRect.w - nodeW - pad));
-  } else {
-    const bandW = laneRect.w / count;
-    const bandLeft = laneRect.x + bandW * opts.laneIndex;
-    const bandCenter = bandLeft + bandW / 2;
-    x = bandCenter - nodeW / 2;
-    y = Math.max(laneRect.y + pad, Math.min(y, laneRect.y + laneRect.h - nodeH - pad));
-  }
-
-  return { x, y, laneContainerId: opts.laneNode.id, laneIndex: opts.laneIndex };
-}
-
-export function getDividerPositions(data: SwimlaneNodeData) {
-  const count = Math.max(0, Number(data.dividers ?? 0));
-  const existing = (data.dividerPositions ?? []).filter((n) => Number.isFinite(n));
-  if (count <= 0) return [];
-
-  if (existing.length === count) {
-    return existing
-      .slice()
-      .sort((a, b) => a - b)
-      .map((x) => Math.min(0.95, Math.max(0.05, x)));
-  }
-
-  return Array.from({ length: count }).map((_, i) => (i + 1) / (count + 1));
-}
-
-export function moveDivider(pos: number[], index: number, next: number) {
-  const arr = pos.slice();
-  arr[index] = next;
-
-  const left = index > 0 ? arr[index - 1] + 0.03 : 0.05;
-  const right = index < arr.length - 1 ? arr[index + 1] - 0.03 : 0.95;
-  arr[index] = Math.max(left, Math.min(right, arr[index]));
-
-  return arr
-    .slice()
-    .sort((a, b) => a - b)
-    .map((x) => Math.min(0.95, Math.max(0.05, x)));
+  return { x: clamped.x, y: clamped.y, laneContainerId: opts.laneNode.id, laneIndex: opts.laneIndex };
 }
 
 export function stripNonSerializableFromNodes(nodes: Node[]) {

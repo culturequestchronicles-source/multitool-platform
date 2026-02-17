@@ -1,16 +1,14 @@
+// app/api/diagrams/[id]/debug/route.ts
 import { NextResponse } from "next/server";
-import { supabaseApi } from "@/lib/supabase/api";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
 
   try {
-    const supabase = await supabaseApi(req);
-
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-    const user = auth.user;
+    const supabase = supabaseAdmin();
 
     const { data: row, error: selectErr } = await supabase
       .from("diagrams")
@@ -18,19 +16,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .eq("id", id)
       .maybeSingle();
 
+    // ✅ sanitize sensitive fields
+    const safe = row ? { ...row } : null;
+    if (safe && "edit_key" in safe) delete (safe as any).edit_key;
+
     return NextResponse.json({
       ok: true,
       id,
-      authErr: authErr?.message ?? null,
-      user: user ? { id: user.id, email: user.email } : null,
+      auth: "public-mode",
       selectError: selectErr?.message ?? null,
       diagramFound: !!row,
-      diagram: row ?? null,
+      diagram: safe,
     });
   } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? String(e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: e?.message ?? String(e) }, { status: 500 });
   }
 }

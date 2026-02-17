@@ -1,44 +1,31 @@
+// app/api/diagrams/[id]/versions/route.ts
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { readEditKey } from "@/lib/diagrams/editKey";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/diagrams/:id/versions  -> list versions
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+// GET /api/diagrams/:id/versions
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+
   try {
-    const { id } = await ctx.params;
+    const supabase = supabaseAdmin();
 
-    const supabase = await supabaseServer();
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
+    const editKey = readEditKey(req);
+    if (!editKey) return NextResponse.json({ error: "Missing edit key" }, { status: 401 });
 
-    if (authErr || !auth?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Basic access check (owner only). If you later add sharing, extend this.
-    const { data: diagram, error: dErr } = await supabase
-      .from("diagrams")
-      .select("id, owner_id")
-      .eq("id", id)
-      .single();
-
-    if (dErr || !diagram) {
-      return NextResponse.json({ error: dErr?.message ?? "Diagram not found" }, { status: 404 });
-    }
-
-    if (diagram.owner_id !== auth.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const { data: diagram } = await supabase.from("diagrams").select("id, edit_key").eq("id", id).maybeSingle();
+    if (!diagram) return NextResponse.json({ error: "Diagram not found" }, { status: 404 });
+    if (diagram.edit_key !== editKey) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { data: versions, error: vErr } = await supabase
       .from("diagram_versions")
-      .select("id, version_number, label, created_at, created_by, is_auto_saved, retention_tier")
+      .select("id, version_number, label, created_at, is_auto_saved, retention_tier")
       .eq("diagram_id", id)
       .order("version_number", { ascending: false });
 
-    if (vErr) {
-      return NextResponse.json({ error: vErr.message }, { status: 400 });
-    }
+    if (vErr) return NextResponse.json({ error: vErr.message }, { status: 400 });
 
     return NextResponse.json({ ok: true, versions: versions ?? [] }, { status: 200 });
   } catch (e: any) {
@@ -46,37 +33,28 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   }
 }
 
-// POST /api/diagrams/:id/versions -> create a new version (optional helper)
+// POST /api/diagrams/:id/versions (manual checkpoint)
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+
   try {
-    const { id } = await ctx.params;
-
-    const supabase = await supabaseServer(req);
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-
-    if (authErr || !auth?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const supabase = supabaseAdmin();
 
     const body = await req.json().catch(() => ({}));
-    const label = String(body.label ?? "").trim() || null;
+    const editKey = readEditKey(req, body);
+    if (!editKey) return NextResponse.json({ error: "Missing edit key" }, { status: 401 });
 
-    // Load diagram + snapshot
-    const { data: diagram, error: dErr } = await supabase
+    const label = String(body?.label ?? "").trim() || null;
+
+    const { data: diagram } = await supabase
       .from("diagrams")
-      .select("id, owner_id, current_snapshot")
+      .select("id, edit_key, current_snapshot")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
-    if (dErr || !diagram) {
-      return NextResponse.json({ error: dErr?.message ?? "Diagram not found" }, { status: 404 });
-    }
+    if (!diagram) return NextResponse.json({ error: "Diagram not found" }, { status: 404 });
+    if (diagram.edit_key !== editKey) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    if (diagram.owner_id !== auth.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Next version number
     const { data: last } = await supabase
       .from("diagram_versions")
       .select("version_number")
@@ -93,7 +71,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         diagram_id: id,
         version_number: nextVersion,
         snapshot: diagram.current_snapshot ?? {},
-        created_by: auth.user.id,
         is_auto_saved: false,
         retention_tier: "long",
         label,
@@ -101,12 +78,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .select("id")
       .single();
 
-    if (cErr || !created) {
-      return NextResponse.json({ error: cErr?.message ?? "Failed to create version" }, { status: 400 });
-    }
-
-    // Set current_version_id
-    await supabase.from("diagrams").update({ current_version_id: created.id }).eq("id", id);
+    if (cErr || !created) return NextResponse.json({ error: cErr?.message ?? "Failed" }, { status: 400 });
 
     return NextResponse.json({ ok: true, versionId: created.id }, { status: 200 });
   } catch (e: any) {
