@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "About — Jhatpat",
@@ -10,7 +11,7 @@ export default function AboutPage() {
     <main className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="text-3xl font-semibold">About Jhatpat</h1>
       <p className="mt-3 text-sm text-gray-600">
-        Jhatpat is a fast, privacy-first utility platform built for professionals and teams.
+        Jhatpat.com is a web utilities platform for quick file, data, and diagram workflows.
       </p>
 
       <section className="mt-8 space-y-5 text-sm text-gray-700">
@@ -29,13 +30,37 @@ export default function AboutPage() {
             <li>Data utilities for CSV, JSON, and Excel workflows.</li>
             <li>Diff tools, generators, and diagramming support for teams.</li>
           </ul>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="rounded-full border bg-white px-3 py-2 text-xs font-semibold hover:bg-gray-50" href="/pdf-tools">
+              PDF tools
+            </Link>
+            <Link className="rounded-full border bg-white px-3 py-2 text-xs font-semibold hover:bg-gray-50" href="/csv-tools">
+              CSV tools
+            </Link>
+            <Link className="rounded-full border bg-white px-3 py-2 text-xs font-semibold hover:bg-gray-50" href="/diff-tools">
+              Diff tools
+            </Link>
+            <Link className="rounded-full border bg-white px-3 py-2 text-xs font-semibold hover:bg-gray-50" href="/diagramming">
+              Diagramming
+            </Link>
+          </div>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold">Security & Trust</h2>
           <p className="mt-2">
-            We prioritize data security, modern infrastructure, and clear privacy practices to
-            protect your files and workflow.
+            Some tools run fully in your browser, and some tools use server APIs to process uploads.
+            For sensitive documents or private data, avoid uploading and double-check the page notes
+            before using a converter.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold">Brand Clarification</h2>
+          <p className="mt-2">
+            Jhatpat.com is not affiliated with any government utility portal or third-party service
+            that may use a similar name. If you are looking for a connection or billing portal,
+            verify you are on the correct official domain for that organization.
           </p>
         </div>
 

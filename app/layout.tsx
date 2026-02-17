@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import RootShell from "@/components/RootShell";
+import JsonLd from "@/components/seo/JsonLd";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/schema";
 
 export const viewport: Viewport = {
   themeColor: "#2563eb",
@@ -64,14 +66,6 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Basic JSON-LD (Organization)
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Jhatpat",
-    url: "https://jhatpat.com",
-  };
-
   return (
     <html lang="en">
       <body
@@ -82,11 +76,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           color: "#111827",
         }}
       >
-        <script
-          type="application/ld+json"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        <JsonLd id="jsonld-org" value={organizationJsonLd()} />
+        <JsonLd id="jsonld-website" value={websiteJsonLd()} />
         <RootShell>{children}</RootShell>
       </body>
     </html>

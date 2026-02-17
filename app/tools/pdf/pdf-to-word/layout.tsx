@@ -1,9 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import ToolSeoSection from "@/components/seo/ToolSeoSection";
 import { getToolSeo, toolUrl } from "@/lib/seo/tools";
-import DiagramsListClient from "./DiagramsListClient";
 
-const tool = getToolSeo("/tools/diagrams");
+const tool = getToolSeo("/tools/pdf/pdf-to-word");
 
 export const metadata: Metadata = {
   title: tool.title,
@@ -16,14 +15,15 @@ export const metadata: Metadata = {
     url: toolUrl(tool.path),
     type: "website",
   },
-  robots: { index: tool.indexable, follow: true },
+  robots: { index: true, follow: true },
 };
 
-export default function Page() {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <DiagramsListClient />
+      {children}
       <ToolSeoSection tool={tool} />
     </>
   );
 }
+

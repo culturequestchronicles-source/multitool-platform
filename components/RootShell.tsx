@@ -109,11 +109,29 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 12 }}>🔒 Privacy First</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 12 }}>🔒 Privacy Notes</h3>
                 <p>
-                  Whether you're merging PDFs or generating passwords, your data never leaves your machine.
-                  We use client-side processing for total security.
+                  Many tools run locally in your browser. Some tools use server APIs to process uploads.
+                  Avoid uploading sensitive documents and always review the tool notes.
                 </p>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 12 }}>Explore</h3>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  <a href="/pdf-tools" style={{ textDecoration: "none", color: "#2563eb", fontWeight: 700 }}>
+                    PDF tools
+                  </a>
+                  <a href="/csv-tools" style={{ textDecoration: "none", color: "#2563eb", fontWeight: 700 }}>
+                    CSV tools
+                  </a>
+                  <a href="/diff-tools" style={{ textDecoration: "none", color: "#2563eb", fontWeight: 700 }}>
+                    Diff tools
+                  </a>
+                  <a href="/diagramming" style={{ textDecoration: "none", color: "#2563eb", fontWeight: 700 }}>
+                    Diagramming
+                  </a>
+                </div>
               </div>
             </div>
 
